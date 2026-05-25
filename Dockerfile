@@ -1,4 +1,4 @@
-FROM php:8.4-apache
+FROM php:8.4-cli
 
 WORKDIR /var/www/html
 
@@ -15,13 +15,6 @@ RUN apt-get update \
         pdo_mysql \
         pdo_pgsql \
         zip \
-    && rm -f /etc/apache2/mods-enabled/mpm_event.load \
-        /etc/apache2/mods-enabled/mpm_event.conf \
-        /etc/apache2/mods-enabled/mpm_worker.load \
-        /etc/apache2/mods-enabled/mpm_worker.conf \
-    && a2enmod mpm_prefork rewrite headers \
-    && sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -40,6 +33,6 @@ RUN npm run build \
     && chmod -R ug+rwx storage bootstrap/cache \
     && chmod +x docker/start.sh
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["docker/start.sh"]
