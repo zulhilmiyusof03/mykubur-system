@@ -35,14 +35,21 @@ class DatabaseSeeder extends Seeder
             ['nama_si_mati' => 'Kassim bin Selamat', 'no_ic' => '450912-01-4302', 'blok' => 'C', 'baris' => 44, 'lot' => 2, 'tarikh_kebumi' => '2026-06-27', 'masa_kebumi' => '14:05', 'waris' => [['nama' => 'Sabariah binti Kassim', 'no_tel' => '019-4301002']]],
         ];
 
-        GraveRecord::query()->delete();
-
         foreach ($records as $data) {
             $waris = $data['waris'];
             unset($data['waris']);
 
-            $record = GraveRecord::create($data);
-            $record->waris()->createMany($waris);
+            $record = GraveRecord::updateOrCreate(
+                ['no_ic' => $data['no_ic']],
+                $data,
+            );
+
+            foreach ($waris as $warisData) {
+                $record->waris()->updateOrCreate(
+                    ['nama' => $warisData['nama']],
+                    $warisData,
+                );
+            }
         }
     }
 }

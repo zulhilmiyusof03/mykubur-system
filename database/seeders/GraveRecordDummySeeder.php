@@ -20,14 +20,21 @@ class GraveRecordDummySeeder extends Seeder
         ];
 
         DB::transaction(function () use ($records) {
-            GraveRecord::query()->delete();
-
             foreach ($records as $data) {
                 $waris = $data['waris'];
                 unset($data['waris']);
 
-                $record = GraveRecord::create($data);
-                $record->waris()->createMany($waris);
+                $record = GraveRecord::updateOrCreate(
+                    ['no_ic' => $data['no_ic']],
+                    $data,
+                );
+
+                foreach ($waris as $warisData) {
+                    $record->waris()->updateOrCreate(
+                        ['nama' => $warisData['nama']],
+                        $warisData,
+                    );
+                }
             }
         });
     }
