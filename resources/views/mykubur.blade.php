@@ -7,7 +7,7 @@
     <title>MyKubur - Perkuburan Islam Kampung Rantau Panjang</title>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite('resources/css/app.css')
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
@@ -564,6 +564,6 @@
     </footer>
 
     <!-- INTERACTIVE JAVASCRIPT STATE MANAGEMENT -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="{{ asset('assets/js/app.js') }}?v={{ filemtime(public_path('assets/js/app.js')) }}" defer></script>
 </body>
 </html>

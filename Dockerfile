@@ -1,3 +1,15 @@
+FROM node:22-bookworm-slim AS assets
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY resources ./resources
+COPY public ./public
+COPY vite.config.js ./
+RUN npm run build
+
 FROM php:8.4-apache
 
 WORKDIR /var/www/html
@@ -38,6 +50,8 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-av
 # Copy project
 # =========================
 COPY . .
+
+COPY --from=assets /app/public/build ./public/build
 
 # =========================
 # Permissions fix

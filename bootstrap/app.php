@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->validateCsrfTokens(except: [
+            'auth/*',
+            'grave-records',
+            'grave-records/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
