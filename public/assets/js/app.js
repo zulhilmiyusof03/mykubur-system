@@ -123,6 +123,8 @@ let state = {
             renderStats();
             renderVisualMap();
             filterSearchWaris(); // Initial state show help
+            document.getElementById('login-email')?.addEventListener('input', () => setLoginError(''));
+            document.getElementById('login-password')?.addEventListener('input', () => setLoginError(''));
             lucide.createIcons();
         });
 
@@ -162,6 +164,7 @@ let state = {
 
         function toggleAuthMode(mode) {
             state.authMode = mode;
+            setLoginError('');
             const tabLogin = document.getElementById('auth-tab-login');
             const tabRegister = document.getElementById('auth-tab-register');
             const formLogin = document.getElementById('login-form');
@@ -180,8 +183,17 @@ let state = {
             }
         }
 
+        function setLoginError(message) {
+            const errorBox = document.getElementById('login-error');
+            if (!errorBox) return;
+
+            errorBox.textContent = message || '';
+            errorBox.classList.toggle('hidden', !message);
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
+            setLoginError('');
             const email = document.getElementById('login-email').value.trim().toLowerCase();
             const pass = document.getElementById('login-password').value;
 
@@ -195,6 +207,7 @@ let state = {
                 showSystemInterface();
                 showToast(`Selamat kembali, ${result.user.name}!`);
             } catch (error) {
+                setLoginError(error.message);
                 showToast(error.message);
                 console.error(error);
             }

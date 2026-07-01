@@ -51,6 +51,8 @@
                     </div>
                 </div>
 
+                <div id="login-error" class="hidden rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" role="alert"></div>
+
                 <button type="submit" class="app-button-primary w-full py-3 text-xs flex items-center justify-center gap-2">
                     <i data-lucide="log-in" class="w-4 h-4"></i> Masuk Ke Sistem
                 </button>
