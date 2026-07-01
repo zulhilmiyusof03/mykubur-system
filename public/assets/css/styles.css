@@ -1,13 +1,361 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+:root {
+    --mk-primary: #065f46;
+    --mk-primary-soft: #ecfdf5;
+    --mk-primary-deep: #064e3b;
+    --mk-gradient-start: #ecfdf5;
+    --mk-gradient-end: #fefce8;
+    --mk-cream: #fffbe6;
+    --mk-warm: #fef9c3;
+    --mk-surface: #ffffff;
+    --mk-muted: #4b5563;
+    --mk-border: #e5e7eb;
+    --mk-blue: #2563eb;
+    --mk-purple: #7c3aed;
+    --mk-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+}
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(236, 253, 245, 0.95), transparent 32rem),
+        radial-gradient(circle at bottom right, rgba(254, 252, 232, 0.9), transparent 34rem),
+        linear-gradient(135deg, #f8fafc 0%, #f0fdf4 48%, #fefce8 100%);
+    color: #172033;
+}
+
+body.bg-slate-50 {
+    background-color: #f7fbf5;
+}
 
 /* Small Tailwind-like helpers used by the exported HTML. */
 .bg-slate-55 { background-color: #f8fafc; }
 .text-slate-850 { color: #172033; }
+
+.app-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    border-radius: 14px;
+    box-shadow:
+        0 0 0 1px rgba(209, 250, 229, 0.35),
+        0 10px 30px rgba(15, 23, 42, 0.06);
+    backdrop-filter: blur(12px);
+}
+
+.app-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.app-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.625rem;
+    color: var(--mk-primary);
+    background: linear-gradient(135deg, #d1fae5 0%, #fef9c3 100%);
+    box-shadow: inset 0 0 0 1px rgba(6, 95, 70, 0.08);
+}
+
+.app-title {
+    color: #0f172a;
+    font-size: 1rem;
+    line-height: 1.45;
+    font-weight: 800;
+}
+
+.app-muted {
+    color: var(--mk-muted);
+    font-size: 0.75rem;
+    line-height: 1.55;
+}
+
+.app-label {
+    display: block;
+    color: #475569;
+    font-size: 0.7rem;
+    line-height: 1.25;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-bottom: 0.5rem;
+}
+
+.app-input {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid rgba(6, 95, 70, 0.26);
+    border-radius: 0.625rem;
+    color: #1e293b;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.app-input:focus {
+    outline: none;
+    border-color: #047857;
+    box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12);
+}
+
+.app-button-primary {
+    background: var(--mk-primary);
+    color: #ffffff;
+    border-radius: 0.625rem;
+    font-weight: 700;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.app-button-primary:hover {
+    background: var(--mk-primary-deep);
+}
+
+.app-button-secondary {
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid rgba(6, 95, 70, 0.26);
+    border-radius: 0.625rem;
+    font-weight: 700;
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.app-button-secondary:hover {
+    background: #ecfdf5;
+    border-color: rgba(6, 95, 70, 0.48);
+}
+
+.app-section {
+    padding: 1.25rem;
+}
+
+.app-panel {
+    background: linear-gradient(135deg, rgba(236, 253, 245, 0.72), rgba(255, 255, 255, 0.92) 52%, rgba(254, 252, 232, 0.68));
+    border: 1.5px solid rgba(16, 185, 129, 0.32);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px rgba(209, 250, 229, 0.38);
+}
+
+.cemetery-hero {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 78% 46%, rgba(255, 255, 255, 0.72), transparent 28%),
+        linear-gradient(105deg, var(--mk-gradient-start) 0%, #f6fdec 46%, var(--mk-gradient-end) 100%);
+    border: 1.5px solid rgba(6, 95, 70, 0.28);
+    border-radius: 16px;
+    box-shadow: var(--mk-shadow);
+}
+
+.cemetery-hero::before {
+    content: "";
+    position: absolute;
+    inset: auto 15rem -2.1rem auto;
+    width: 28rem;
+    height: 12rem;
+    background: radial-gradient(ellipse at center, rgba(6, 95, 70, 0.08), transparent 68%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.cemetery-hero-content,
+.cemetery-hero-stats {
+    position: relative;
+    z-index: 2;
+}
+
+.cemetery-hero-date {
+    color: var(--mk-primary);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(209, 250, 229, 0.95);
+    box-shadow: 0 8px 18px rgba(6, 95, 70, 0.08);
+}
+
+.cemetery-hero-title {
+    color: var(--mk-primary);
+}
+
+.cemetery-hero-meta {
+    color: var(--mk-muted);
+}
+
+.cemetery-hero-meta strong {
+    color: var(--mk-primary);
+}
+
+.cemetery-hero-watermark {
+    position: absolute;
+    right: 32%;
+    bottom: 0.7rem;
+    width: 14rem;
+    height: 8.1rem;
+    opacity: 0.12;
+    pointer-events: none;
+    color: var(--mk-primary);
+    z-index: 1;
+    filter: blur(0.1px);
+}
+
+.cemetery-hero-watermark::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0.35rem;
+    width: 5.65rem;
+    height: 5.1rem;
+    transform: translateX(-50%);
+    background: currentColor;
+    border-radius: 50% 50% 0 0;
+    box-shadow:
+        -4.85rem 1.35rem 0 -1.1rem currentColor,
+        4.85rem 1.35rem 0 -1.1rem currentColor,
+        -7.1rem 2.6rem 0 -1.85rem currentColor,
+        7.1rem 2.6rem 0 -1.85rem currentColor;
+}
+
+.cemetery-hero-watermark::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 5.1rem;
+    width: 0.62rem;
+    height: 2.65rem;
+    transform: translateX(-50%);
+    background: currentColor;
+    border-radius: 999px;
+    box-shadow:
+        -4.85rem 1.65rem 0 -0.1rem currentColor,
+        4.85rem 1.65rem 0 -0.1rem currentColor,
+        -7.1rem 2.75rem 0 -0.18rem currentColor,
+        7.1rem 2.75rem 0 -0.18rem currentColor;
+}
+
+.cemetery-hero-crescent {
+    position: absolute;
+    left: 50%;
+    bottom: 7.35rem;
+    width: 1.42rem;
+    height: 1.42rem;
+    transform: translateX(-15%);
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.cemetery-hero-crescent::after {
+    content: "";
+    position: absolute;
+    top: -0.18rem;
+    left: 0.42rem;
+    width: 1.42rem;
+    height: 1.42rem;
+    border-radius: 999px;
+    background: #f6fdec;
+}
+
+.cemetery-stat-card {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+}
+
+.cemetery-stat-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 26px rgba(15, 23, 42, 0.12);
+}
+
+.cemetery-stat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: 0 auto 0.55rem;
+    border-radius: 999px;
+}
+
+.cemetery-stat-icon-a {
+    color: var(--mk-primary);
+    background: rgba(22, 163, 74, 0.14);
+}
+
+.cemetery-stat-icon-b {
+    color: var(--mk-blue);
+    background: rgba(37, 99, 235, 0.14);
+}
+
+.cemetery-stat-icon-c {
+    color: var(--mk-purple);
+    background: rgba(124, 58, 237, 0.14);
+}
+
+.cemetery-stat-value-a {
+    color: var(--mk-primary);
+}
+
+.cemetery-stat-value-b {
+    color: var(--mk-blue);
+}
+
+.cemetery-stat-value-c {
+    color: var(--mk-purple);
+}
+
+.app-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.675rem;
+    line-height: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.app-badge-primary {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--mk-primary) 0%, #047857 100%);
+}
+
+.app-badge-muted {
+    color: var(--mk-primary);
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(16, 185, 129, 0.34);
+}
+
+.map-shell {
+    background:
+        linear-gradient(135deg, rgba(236, 253, 245, 0.86), rgba(255, 255, 255, 0.96) 52%, rgba(254, 252, 232, 0.72));
+    border: 2px solid rgba(6, 95, 70, 0.42);
+    border-radius: 16px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.75),
+        0 0 0 4px rgba(209, 250, 229, 0.42),
+        0 12px 26px rgba(6, 95, 70, 0.08);
+}
+
+.map-path {
+    background: linear-gradient(90deg, #1f4d3a 0%, #2f5f4a 48%, #51613b 100%);
+    color: #ecfdf5;
+    border-color: rgba(6, 95, 70, 0.78) !important;
+}
+
+.map-road {
+    background: linear-gradient(90deg, #163225 0%, #1f3f30 52%, #263a2f 100%);
+    color: #ecfdf5;
+    border-color: rgba(6, 95, 70, 0.78) !important;
+}
+
+.status-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 999px;
+    display: inline-block;
+}
 
 .admin-records-scroll {
     max-height: 520px;
@@ -57,6 +405,207 @@
     z-index: 10;
 }
 
+#auth-screen {
+    background:
+        radial-gradient(circle at 18% 18%, rgba(209, 250, 229, 0.26), transparent 22rem),
+        radial-gradient(circle at 82% 68%, rgba(254, 249, 195, 0.28), transparent 24rem),
+        linear-gradient(135deg, #052e24 0%, #064e3b 52%, #31431f 100%);
+}
+
+#auth-screen > .absolute.inset-0 {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(236, 253, 245, 0.12), transparent 24rem),
+        radial-gradient(circle at 74% 76%, rgba(254, 252, 232, 0.1), transparent 26rem),
+        linear-gradient(135deg, rgba(236, 253, 245, 0.05), rgba(254, 252, 232, 0.07));
+    opacity: 0.7;
+}
+
+#main-system-layout > nav,
+#system-footer,
+#form-modal .bg-slate-900,
+#toast {
+    background:
+        linear-gradient(135deg, #052e24 0%, #064e3b 58%, #263a20 100%) !important;
+    border-color: rgba(209, 250, 229, 0.16) !important;
+}
+
+#main-system-layout > nav {
+    box-shadow: 0 10px 26px rgba(6, 78, 59, 0.16);
+}
+
+#main-system-layout > nav .bg-emerald-700\/20 {
+    background: rgba(236, 253, 245, 0.12) !important;
+    border-color: rgba(236, 253, 245, 0.24) !important;
+    color: #d1fae5 !important;
+}
+
+.nav-btn.bg-emerald-800,
+.nav-btn:hover {
+    background: rgba(236, 253, 245, 0.18) !important;
+    color: #ffffff !important;
+}
+
+.nav-btn.text-slate-300 {
+    color: #d1fae5 !important;
+}
+
+#main-system-layout main {
+    position: relative;
+}
+
+#main-system-layout main::before {
+    content: "";
+    position: fixed;
+    inset: 4.5rem 0 auto 0;
+    height: 18rem;
+    background:
+        radial-gradient(circle at 18% 24%, rgba(236, 253, 245, 0.72), transparent 18rem),
+        radial-gradient(circle at 82% 12%, rgba(254, 252, 232, 0.72), transparent 20rem);
+    pointer-events: none;
+    z-index: -1;
+}
+
+#toast {
+    box-shadow: 0 18px 34px rgba(6, 78, 59, 0.24) !important;
+}
+
+#form-modal {
+    background: rgba(5, 46, 36, 0.66) !important;
+}
+
+#form-modal > div {
+    border: 1px solid rgba(209, 250, 229, 0.7);
+}
+
+#form-modal h4,
+#tab-admin h2,
+#tab-waris h2 {
+    color: var(--mk-primary);
+}
+
+#map-detail-card {
+    background:
+        linear-gradient(135deg, rgba(236, 253, 245, 0.92), rgba(255, 255, 255, 0.98) 55%, rgba(254, 252, 232, 0.7)) !important;
+    border: 1.5px solid rgba(6, 95, 70, 0.32) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(209, 250, 229, 0.42),
+        0 12px 26px rgba(6, 95, 70, 0.08);
+}
+
+#search-results-container > div:not(.app-panel),
+#admin-records-table-body tr {
+    background: rgba(255, 255, 255, 0.88) !important;
+}
+
+#search-results-container > div:not(.app-panel) {
+    border: 1.5px solid rgba(16, 185, 129, 0.28) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(209, 250, 229, 0.32),
+        0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+#search-results-container > div:not(.app-panel):hover {
+    border-color: rgba(6, 95, 70, 0.45) !important;
+    box-shadow: 0 12px 26px rgba(6, 95, 70, 0.08);
+}
+
+#admin-records-table-body tr:hover {
+    background: rgba(236, 253, 245, 0.52) !important;
+}
+
+thead tr,
+.bg-slate-50.border-b {
+    background: linear-gradient(135deg, rgba(236, 253, 245, 0.78), rgba(254, 252, 232, 0.42)) !important;
+    border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+#visual-lots-grid .border-dashed {
+    background: rgba(255, 255, 255, 0.86) !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+}
+
+#visual-lots-grid .border-dashed:hover {
+    background: #ecfdf5 !important;
+}
+
+#visual-lots-grid .bg-rose-50 {
+    background: #fff1f2 !important;
+}
+
+#layout-block-a,
+#layout-block-b,
+#layout-block-c {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36), 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+#layout-block-a.bg-emerald-800,
+#layout-block-b.bg-emerald-800,
+#layout-block-c.bg-emerald-800 {
+    background: linear-gradient(135deg, #065f46 0%, #047857 58%, #527236 100%) !important;
+    border-color: rgba(6, 95, 70, 0.65) !important;
+}
+
+#layout-block-a.bg-white,
+#layout-block-b.bg-white,
+#layout-block-c.bg-white {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(236, 253, 245, 0.72)) !important;
+    border-color: rgba(16, 185, 129, 0.42) !important;
+}
+
+.bg-slate-800.flex.flex-col {
+    background: linear-gradient(180deg, #1f4d3a 0%, #2f5f4a 100%) !important;
+    border-color: rgba(6, 95, 70, 0.72) !important;
+    box-shadow: inset 0 0 0 1px rgba(209, 250, 229, 0.18);
+}
+
+.admin-records-scroll::-webkit-scrollbar-track,
+.waris-search-scroll::-webkit-scrollbar-track {
+    background: #ecfdf5;
+}
+
+.admin-records-scroll::-webkit-scrollbar-thumb,
+.waris-search-scroll::-webkit-scrollbar-thumb {
+    background: #6ee7b7;
+}
+
+#tab-waris > .app-card,
+#tab-admin > .app-card,
+#tab-admin .app-card,
+#tab-waris .app-card {
+    border-color: rgba(6, 95, 70, 0.24);
+}
+
+#tab-waris .app-card > .app-panel,
+#tab-waris .app-card > div.app-panel,
+#tab-waris .app-card .app-panel,
+#tab-admin .app-card .bg-slate-50.border-b,
+#tab-admin .app-card .admin-records-scroll {
+    border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+#tab-waris .app-card .app-panel {
+    outline: 1px solid rgba(209, 250, 229, 0.42);
+    outline-offset: -1px;
+}
+
+#tab-admin .app-card.overflow-hidden {
+    box-shadow:
+        inset 0 0 0 1px rgba(209, 250, 229, 0.42),
+        0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+#admin-records-table-body td:first-child span,
+#detail-lot-id,
+#selected-block-label {
+    border-color: rgba(6, 95, 70, 0.34) !important;
+    box-shadow: 0 4px 12px rgba(6, 95, 70, 0.08);
+}
+
+#no-search-results,
+#search-results-container .app-panel {
+    border: 1.5px solid rgba(16, 185, 129, 0.32);
+}
+
 @media (max-width: 640px) {
     .admin-records-scroll {
         max-height: 430px;
@@ -64,5 +613,19 @@
 
     .waris-search-scroll {
         max-height: 360px;
+    }
+
+    .cemetery-hero-watermark {
+        right: -1.75rem;
+        bottom: 7.25rem;
+        width: 9.5rem;
+        height: 5.75rem;
+        opacity: 0.075;
+    }
+
+    .cemetery-hero::before {
+        inset: auto -3rem 4.5rem auto;
+        width: 14rem;
+        height: 8rem;
     }
 }

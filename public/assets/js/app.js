@@ -1,61 +1,4 @@
-// Seed default demo data
-        const DEMO_RECORDS = [
-            {
-                id: "1",
-                nama_si_mati: "Ahmad bin Musa",
-                no_ic: "650203-08-5431",
-                blok: "A",
-                baris: 1,
-                lot: 1,
-                tarikh_kebumi: "2026-01-15",
-                masa_kebumi: "10:30",
-                waris: [
-                    { nama: "Mohd Musa bin Ahmad", no_tel: "012-3456789" },
-                    { nama: "Aminah binti Ahmad", no_tel: "019-8765432" }
-                ]
-            },
-            {
-                id: "2",
-                nama_si_mati: "Ali bin Talib",
-                no_ic: "780512-02-3321",
-                blok: "A",
-                baris: 1,
-                lot: 2,
-                tarikh_kebumi: "2026-02-20",
-                masa_kebumi: "14:15",
-                waris: [
-                    { nama: "Fatimah binti Talib", no_tel: "011-23456789" }
-                ]
-            },
-            {
-                id: "3",
-                nama_si_mati: "Siti Aminah binti Yusof",
-                no_ic: "520814-10-5566",
-                blok: "B",
-                baris: 5,
-                lot: 12,
-                tarikh_kebumi: "2026-03-01",
-                masa_kebumi: "09:00",
-                waris: [
-                    { nama: "Khairul bin Yusof", no_tel: "013-4445555" }
-                ]
-            },
-            {
-                id: "4",
-                nama_si_mati: "Kassim bin Selamat",
-                no_ic: "450912-01-4433",
-                blok: "C",
-                baris: 99,
-                lot: 20,
-                tarikh_kebumi: "2025-12-10",
-                masa_kebumi: "11:00",
-                waris: [
-                    { nama: "Sabariah binti Kassim", no_tel: "017-9998888" }
-                ]
-            }
-        ];
-
-        let state = {
+let state = {
             records: [],
             currentUser: null,
             currentTab: 'waris',
@@ -67,6 +10,57 @@
         const RECORDS_API_URL = '/grave-records';
         const AUTH_API_URL = '/auth';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const MAX_ROW = 57;
+
+        function getBaseLotCount(blok, baris) {
+            if (blok === 'B' && Number(baris) <= 7) {
+                return 5;
+            }
+
+            return 10;
+        }
+
+        function getHighestLotInRow(blok, baris, ignoreId = '') {
+            return state.records
+                .filter(r => r.id !== ignoreId && r.blok === blok && r.baris === Number(baris))
+                .reduce((highest, record) => Math.max(highest, Number(record.lot)), 0);
+        }
+
+        function getDisplayLotCount(blok, baris) {
+            return Math.max(getBaseLotCount(blok, baris), getHighestLotInRow(blok, baris));
+        }
+
+        function getBlockCapacity(blok) {
+            let total = 0;
+            for (let baris = 1; baris <= MAX_ROW; baris++) {
+                total += getDisplayLotCount(blok, baris);
+            }
+
+            return total;
+        }
+
+        function getNextLotNumber(blok, baris, ignoreId = '') {
+            return Math.max(getBaseLotCount(blok, baris), getHighestLotInRow(blok, baris, ignoreId)) + 1;
+        }
+
+        function getLotCode(record) {
+            return `${record.blok}${record.baris}-${record.lot}`;
+        }
+
+        function getZoneName(blok) {
+            if (blok === 'A') return 'Zon Kanan';
+            if (blok === 'B') return 'Zon Tengah';
+            return 'Zon Kiri';
+        }
+
+        function isValidSlot(blok, baris, lot) {
+            const rowNumber = Number(baris);
+            const lotNumber = Number(lot);
+            return ['A', 'B', 'C'].includes(blok)
+                && rowNumber >= 1
+                && rowNumber <= MAX_ROW
+                && lotNumber >= 1;
+        }
 
         function normalizeRecord(record) {
             return {
@@ -139,22 +133,14 @@
                 const records = await recordsApi();
                 state.records = records.map(normalizeRecord);
 
-                if (state.records.length === 0) {
-                    const seeded = await recordsApi('/reset-demo', {
-                        method: 'POST',
-                        body: JSON.stringify({ records: DEMO_RECORDS })
-                    });
-                    state.records = seeded.map(normalizeRecord);
-                }
-
                 localStorage.setItem('mykubur_records', JSON.stringify(state.records));
             } catch (error) {
                 const savedRecords = localStorage.getItem('mykubur_records');
                 if (savedRecords) {
                     state.records = JSON.parse(savedRecords);
                 } else {
-                    state.records = [...DEMO_RECORDS];
-                    localStorage.setItem('mykubur_records', JSON.stringify(state.records));
+                    state.records = [];
+                    localStorage.removeItem('mykubur_records');
                 }
                 console.error(error);
             }
@@ -287,22 +273,6 @@
             document.getElementById('reg-password').value = '';
         }
 
-        async function resetToDemoData() {
-            try {
-                const records = await recordsApi('/reset-demo', {
-                    method: 'POST',
-                    body: JSON.stringify({ records: DEMO_RECORDS })
-                });
-                state.records = records.map(normalizeRecord);
-                showToast("Semua data demo perkuburan telah diset semula dalam database!");
-            } catch (error) {
-                state.records = [...DEMO_RECORDS];
-                showToast("Database tidak dapat dicapai. Data demo diset semula dalam browser sahaja.");
-                console.error(error);
-            }
-            refreshAllViews();
-        }
-
         function showToast(text) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-text').innerText = text;
@@ -319,9 +289,17 @@
             let b = state.records.filter(r => r.blok === 'B').length;
             let c = state.records.filter(r => r.blok === 'C').length;
 
-            const textA = `${a} / 2000`;
-            const textB = `${b} / 2000`;
-            const textC = `${c} / 2000`;
+            const capacityA = getBlockCapacity('A');
+            const capacityB = getBlockCapacity('B');
+            const capacityC = getBlockCapacity('C');
+            const textA = `${a} / ${capacityA}`;
+            const textB = `${b} / ${capacityB}`;
+            const textC = `${c} / ${capacityC}`;
+            const totalCapacityEl = document.getElementById('total-capacity');
+
+            if (totalCapacityEl) {
+                totalCapacityEl.innerText = `${capacityA + capacityB + capacityC} lot`;
+            }
 
             // Top banner stats
             document.getElementById('stats-a').innerText = textA;
@@ -340,7 +318,7 @@
         function populateBarisDropdown() {
             const select = document.getElementById('map-row-select');
             select.innerHTML = '';
-            for (let i = 1; i <= 100; i++) {
+            for (let i = 1; i <= MAX_ROW; i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
                 opt.innerText = `Baris ${i}`;
@@ -368,11 +346,11 @@
             // Highlighting desktop buttons without overwriting hidden state
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('bg-emerald-800', 'text-white');
-                btn.classList.add('text-emerald-200', 'hover:text-white', 'hover:bg-emerald-800/50');
+                btn.classList.add('text-slate-300', 'hover:text-white', 'hover:bg-slate-800');
             });
             const activeBtn = document.getElementById(`nav-${tabId}`);
             if (activeBtn) {
-                activeBtn.classList.remove('text-emerald-200', 'hover:text-white', 'hover:bg-emerald-800/50');
+                activeBtn.classList.remove('text-slate-300', 'hover:text-white', 'hover:bg-slate-800');
                 activeBtn.classList.add('bg-emerald-800', 'text-white');
             }
 
@@ -397,46 +375,53 @@
             if (query === '') {
                 emptyState.classList.add('hidden');
                 container.innerHTML = `
-                    <div class="col-span-full text-center py-6 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div class="col-span-full text-center py-6 app-panel">
                         <i data-lucide="info" class="w-6 h-6 text-emerald-700 mx-auto mb-2"></i>
-                        <p class="text-xs text-slate-500 font-medium">Sila gunakan kotak carian di atas untuk menapis rekod kubur waris anda.</p>
+                        <p class="text-xs text-slate-500 font-medium">Masukkan kata carian untuk melihat rekod kubur.</p>
                     </div>
                 `;
                 lucide.createIcons();
                 return;
             }
 
-            const filtered = state.records.filter(r => 
-                r.nama_si_mati.toLowerCase().includes(query) || 
-                r.no_ic.includes(query)
-            );
+            const filtered = state.records.filter(r => {
+                const lotCode = getLotCode(r).toLowerCase();
+                const warisNames = r.waris.map(w => w.nama.toLowerCase()).join(' ');
+                return r.nama_si_mati.toLowerCase().includes(query)
+                    || r.no_ic.toLowerCase().includes(query)
+                    || lotCode.includes(query)
+                    || warisNames.includes(query);
+            });
 
             if (filtered.length === 0) {
                 emptyState.classList.remove('hidden');
             } else {
                 emptyState.classList.add('hidden');
                 filtered.forEach(record => {
-                    const warisListHtml = record.waris.map((w, index) => 
+                    const warisListHtml = record.waris.map((w, index) =>
                         `<li>Waris ${index+1}: <span class="font-bold text-slate-800">${w.nama}</span> (${w.no_tel})</li>`
                     ).join('');
+                    const warisNames = record.waris.map(w => w.nama).join(', ') || '-';
 
                     const card = document.createElement('div');
-                    card.className = "bg-white border-2 border-emerald-100 hover:border-emerald-600 rounded-2xl p-5 shadow-sm transition hover:shadow-md cursor-pointer";
+                    card.className = "bg-white border border-slate-200 hover:border-emerald-600 rounded-xl p-4 transition cursor-pointer";
                     card.onclick = () => locateOnMap(record.blok, record.baris, record.id);
                     card.innerHTML = `
                         <div class="flex justify-between items-start gap-3">
                             <div>
-                                <h3 class="font-bold text-slate-800 text-sm md:text-base">${record.nama_si_mati}</h3>
+                                <h3 class="font-bold text-slate-900 text-sm md:text-base">${record.nama_si_mati}</h3>
                                 <p class="text-xs text-slate-500 font-semibold mb-2">IC Si Mati: ${record.no_ic}</p>
-                                <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-2 py-1 rounded text-[11px] font-bold w-fit">
-                                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Slot Peta: ${record.blok}${record.baris}-${record.lot}
+                                <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-2 py-1 rounded text-[11px] font-bold w-fit border border-emerald-100">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Nombor Lot: ${getLotCode(record)}
                                 </div>
                             </div>
-                            <span class="text-[10px] bg-emerald-800 text-white font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            <span class="app-badge app-badge-primary">
                                 Blok ${record.blok}
                             </span>
                         </div>
                         <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-600 space-y-2">
+                            <p class="flex items-center gap-1"><i data-lucide="users" class="w-3.5 h-3.5 text-slate-400"></i> Nama Waris: <strong class="text-slate-700">${warisNames}</strong></p>
+                            <p class="flex items-center gap-1"><i data-lucide="layout-grid" class="w-3.5 h-3.5 text-slate-400"></i> Blok: <strong class="text-slate-700">${record.blok}</strong> | Lokasi: <strong class="text-slate-700">${getZoneName(record.blok)}</strong></p>
                             <p class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> Dikebumikan: <strong class="text-slate-700">${formatDate(record.tarikh_kebumi)} @ ${record.masa_kebumi}</strong></p>
                             <ul class="space-y-1 pl-1 text-[11px] text-slate-500 border-l-2 border-slate-200 pl-3">
                                 ${warisListHtml}
@@ -479,6 +464,10 @@
 
         function changeMapBlock(blok) {
             state.selectedMapBlock = blok;
+            if (state.selectedMapRow > MAX_ROW) {
+                state.selectedMapRow = MAX_ROW;
+                document.getElementById('map-row-select').value = MAX_ROW;
+            }
             updatePhysicalMapBlocksUI();
             renderVisualMap();
             showToast(`Menukar paparan ke Blok ${blok}`);
@@ -490,38 +479,37 @@
             const blkB = document.getElementById('layout-block-b');
             const blkC = document.getElementById('layout-block-c');
 
-            const normalClasses = "col-span-3 border-2 rounded-2xl p-3 md:p-4 flex flex-col justify-between items-center transition duration-200 cursor-pointer text-center relative group shadow-sm";
-            const activeClasses = "col-span-3 border-2 rounded-2xl p-3 md:p-4 flex flex-col justify-between items-center transition duration-200 cursor-pointer text-center relative group shadow-md ring-4 ring-emerald-500/20";
+            const normalClasses = "col-span-3 border rounded-xl p-3 md:p-4 flex flex-col justify-between items-center transition duration-200 cursor-pointer text-center relative group";
+            const activeClasses = "col-span-3 border rounded-xl p-3 md:p-4 flex flex-col justify-between items-center transition duration-200 cursor-pointer text-center relative group ring-2 ring-emerald-700/20";
 
             function styleBlock(blockEl, blockId, isSelected) {
                 const isB = blockId === 'B';
-                const zonName = blockId === 'A' ? 'KANAN' : blockId === 'B' ? 'TENGAH' : 'KIRI';
+                const zonName = getZoneName(blockId);
+                const capacity = getBlockCapacity(blockId);
                 
                 if (isSelected) {
-                    blockEl.className = `${isB ? 'flex-grow' : 'col-span-3'} bg-emerald-800 hover:bg-emerald-700 border-emerald-600 text-white ${activeClasses}`;
+                    blockEl.className = `${isB ? 'flex-grow' : 'col-span-3'} bg-emerald-800 hover:bg-emerald-700 border-emerald-700 text-white ${activeClasses}`;
                     blockEl.innerHTML = `
-                        <span class="bg-white text-emerald-900 text-[9px] md:text-xs font-bold px-2.5 py-1 rounded-full uppercase">Blok ${blockId}</span>
-                        <div class="my-2 md:my-4">
-                            <p class="text-[10px] md:text-xs text-emerald-100 font-extrabold uppercase">ZON ${zonName}</p>
-                            <p class="text-[8px] md:text-[10px] text-emerald-200 mt-1 font-semibold">Siri ${blockId}1-1 dan seterusnya</p>
+                        <span class="bg-white/95 text-emerald-900 text-[9px] md:text-xs font-bold px-2.5 py-1 rounded uppercase">Blok ${blockId}</span>
+                        <div class="my-3 md:my-5">
+                            <p class="text-[10px] md:text-xs text-emerald-50 font-bold uppercase">${zonName}</p>
                         </div>
-                        <div class="bg-emerald-950 px-1.5 md:px-2 py-1 rounded-xl border border-emerald-700 w-full">
-                            <span class="text-[8px] md:text-[9px] text-emerald-300 block uppercase font-bold leading-none">Isian Lot</span>
-                            <strong id="layout-stats-${blockId.toLowerCase()}" class="text-white text-xs font-black">0 / 2000</strong>
+                        <div class="bg-emerald-950/70 px-1.5 md:px-2 py-1.5 rounded-lg border border-emerald-700 w-full">
+                            <span class="text-[8px] md:text-[9px] text-emerald-200 block uppercase font-bold leading-none">Isian Lot</span>
+                            <strong id="layout-stats-${blockId.toLowerCase()}" class="text-white text-xs font-black">0 / ${capacity}</strong>
                         </div>
-                        <span class="active-badge-span absolute -top-2.5 -right-2 bg-rose-600 text-white text-[9px] font-extrabold px-2 py-0.5 rounded shadow">PILIHAN</span>
+                        <span class="active-badge-span absolute -top-2 -right-2 bg-slate-900 text-white text-[9px] font-bold px-2 py-0.5 rounded border border-white/70">PILIHAN</span>
                     `;
                 } else {
                     blockEl.className = `${isB ? 'flex-grow' : 'col-span-3'} bg-white hover:bg-slate-50 border-slate-300 text-slate-800 ${normalClasses}`;
                     blockEl.innerHTML = `
-                        <span class="bg-emerald-600 text-white text-[9px] md:text-xs font-bold px-2.5 py-1 rounded-full uppercase">Blok ${blockId}</span>
-                        <div class="my-2 md:my-4">
-                            <p class="text-[10px] md:text-xs text-slate-800 font-extrabold uppercase">ZON ${zonName}</p>
-                            <p class="text-[8px] md:text-[10px] text-slate-500 mt-1 font-semibold">Siri ${blockId}1-1 dan seterusnya</p>
+                        <span class="bg-slate-100 text-slate-800 text-[9px] md:text-xs font-bold px-2.5 py-1 rounded uppercase border border-slate-200">Blok ${blockId}</span>
+                        <div class="my-3 md:my-5">
+                            <p class="text-[10px] md:text-xs text-slate-800 font-bold uppercase">${zonName}</p>
                         </div>
-                        <div class="bg-slate-100 px-1.5 md:px-2 py-1 rounded-xl border border-slate-200 w-full">
+                        <div class="bg-slate-50 px-1.5 md:px-2 py-1.5 rounded-lg border border-slate-200 w-full">
                             <span class="text-[8px] md:text-[9px] text-slate-600 block uppercase font-bold leading-none">Isian Lot</span>
-                            <strong id="layout-stats-${blockId.toLowerCase()}" class="text-slate-850 text-xs font-black">0 / 2000</strong>
+                            <strong id="layout-stats-${blockId.toLowerCase()}" class="text-slate-850 text-xs font-black">0 / ${capacity}</strong>
                         </div>
                     `;
                 }
@@ -532,7 +520,7 @@
             styleBlock(blkC, 'C', state.selectedMapBlock === 'C');
 
             // Sync top header label text
-            document.getElementById('selected-block-label').innerText = `BLOK ${state.selectedMapBlock}`;
+            document.getElementById('selected-block-label').innerText = `BLOCK ${state.selectedMapBlock}`;
             document.getElementById('lots-header-title').innerText = `PAPARAN BARISAN LOTS: BLOK ${state.selectedMapBlock} (BARIS ${state.selectedMapRow})`;
 
             // Re-render state stats labels inside the newly dynamic blocks
@@ -541,7 +529,11 @@
         }
 
         function renderVisualMap() {
-            const baris = parseInt(document.getElementById('map-row-select').value) || 1;
+            let baris = parseInt(document.getElementById('map-row-select').value) || 1;
+            if (baris > MAX_ROW) {
+                baris = MAX_ROW;
+                document.getElementById('map-row-select').value = MAX_ROW;
+            }
             state.selectedMapRow = baris;
             
             const container = document.getElementById('visual-lots-grid');
@@ -550,23 +542,24 @@
             const blok = state.selectedMapBlock;
             document.getElementById('lots-header-title').innerText = `PAPARAN BARISAN LOTS: BLOK ${blok} (BARIS ${baris})`;
 
-            // Generate exactly 20 lots for the selected row as specified
-            for (let lotNum = 1; lotNum <= 20; lotNum++) {
+            const lotCount = getDisplayLotCount(blok, baris);
+
+            for (let lotNum = 1; lotNum <= lotCount; lotNum++) {
                 const occupiedRecord = state.records.find(r => r.blok === blok && r.baris === baris && r.lot === lotNum);
                 
                 const lotCard = document.createElement('div');
                 const lotCode = `${blok}${baris}-${lotNum}`;
 
                 if (occupiedRecord) {
-                    lotCard.className = "bg-rose-50 border-2 border-rose-400 hover:border-rose-600 rounded-xl p-3 text-center cursor-pointer transition shadow-sm hover:scale-105";
+                    lotCard.className = "bg-rose-50 border border-rose-300 hover:border-rose-500 rounded-lg p-3 text-center cursor-pointer transition";
                     lotCard.onclick = () => showMapDetail(occupiedRecord);
                     lotCard.innerHTML = `
                         <span class="text-[10px] font-bold block text-rose-800">${lotCode}</span>
                         <div class="h-1 bg-rose-200 rounded my-1 w-full"></div>
-                        <span class="text-xs font-black text-rose-950 truncate block">${occupiedRecord.nama_si_mati}</span>
+                        <span class="text-xs font-bold text-rose-950 truncate block">${occupiedRecord.nama_si_mati}</span>
                     `;
                 } else {
-                    lotCard.className = "bg-white border border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-3 text-center cursor-pointer transition shadow-sm hover:scale-105";
+                    lotCard.className = "bg-white border border-dashed border-slate-300 hover:border-emerald-500 rounded-lg p-3 text-center cursor-pointer transition";
                     lotCard.onclick = () => showEmptyLotAlert(blok, baris, lotNum);
                     lotCard.innerHTML = `
                         <span class="text-[10px] font-bold block text-slate-400">${lotCode}</span>
@@ -582,7 +575,7 @@
             const panel = document.getElementById('map-detail-card');
             panel.classList.remove('hidden');
 
-            document.getElementById('detail-lot-id').innerText = `${record.blok}${record.baris}-${record.lot}`;
+            document.getElementById('detail-lot-id').innerText = getLotCode(record);
             document.getElementById('detail-deceased-name').innerText = record.nama_si_mati;
             document.getElementById('detail-deceased-ic').innerText = `No. IC: ${record.no_ic}`;
             document.getElementById('detail-dateTime').innerText = `${formatDate(record.tarikh_kebumi)} @ ${record.masa_kebumi}`;
@@ -614,7 +607,7 @@
             tbody.innerHTML = '';
 
             const filtered = state.records.filter(r => {
-                const matchSearch = r.nama_si_mati.toLowerCase().includes(searchVal) || r.no_ic.includes(searchVal);
+                const matchSearch = r.nama_si_mati.toLowerCase().includes(searchVal) || getLotCode(r).toLowerCase().includes(searchVal);
                 const matchBlock = filterBlock === "" || r.blok === filterBlock;
                 return matchSearch && matchBlock;
             });
@@ -633,11 +626,11 @@
                 ).join('');
 
                 const row = document.createElement('tr');
-                row.className = "hover:bg-slate-55 border-b border-slate-100 transition";
+                row.className = "hover:bg-slate-50 border-b border-slate-100 transition";
                 row.innerHTML = `
                     <td class="py-4 px-6 font-bold text-emerald-900">
-                        <span class="bg-emerald-50 border border-emerald-200 px-2 py-1 rounded text-xs font-black">
-                            ${r.blok}${r.baris}-${r.lot}
+                        <span class="bg-emerald-50 border border-emerald-200 px-2 py-1 rounded text-xs font-bold">
+                            ${getLotCode(r)}
                         </span>
                     </td>
                     <td class="py-4 px-6">
@@ -653,10 +646,10 @@
                     </td>
                     <td class="py-4 px-6 text-right">
                         <div class="flex justify-end gap-1.5">
-                            <button onclick="editGraveRecord('${r.id}')" class="p-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 rounded transition" title="Kemaskini">
+                            <button onclick="editGraveRecord('${r.id}')" class="p-1.5 bg-white border border-slate-200 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 rounded transition" title="Kemaskini">
                                 <i data-lucide="edit-3" class="w-4 h-4"></i>
                             </button>
-                            <button onclick="deleteGraveRecord('${r.id}')" class="p-1.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded transition" title="Padam">
+                            <button onclick="deleteGraveRecord('${r.id}')" class="p-1.5 bg-white border border-slate-200 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded transition" title="Padam">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -671,6 +664,18 @@
             renderAdminTable();
         }
 
+        function updateNextLotForNewRecord() {
+            const id = document.getElementById('form-id').value;
+            const blok = document.getElementById('form-blok').value;
+            const baris = parseInt(document.getElementById('form-baris').value) || 0;
+
+            if (!id && blok && baris >= 1 && baris <= MAX_ROW) {
+                document.getElementById('form-lot').value = getNextLotNumber(blok, baris);
+            }
+
+            validateSlotAvailability();
+        }
+
         // Add/Remove Waris fields dynamically inside modal form
         function addWarisRow(nama = '', noTel = '') {
             const container = document.getElementById('waris-rows-container');
@@ -683,19 +688,19 @@
 
             const rowId = `waris-row-${Date.now()}-${Math.random()}`;
             const row = document.createElement('div');
-            row.className = "waris-row grid grid-cols-1 sm:grid-cols-2 gap-3 items-end p-3 bg-slate-55 rounded-xl border border-slate-200 relative";
+            row.className = "waris-row grid grid-cols-1 sm:grid-cols-2 gap-3 items-end p-3 bg-slate-50 rounded-lg border border-slate-200 relative";
             row.id = rowId;
             row.innerHTML = `
                 <div>
                     <label class="block text-slate-500 font-medium mb-1 text-[10px]">Nama Waris</label>
-                    <input type="text" value="${nama}" required placeholder="Nama penuh waris" class="waris-nama w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-600">
+                    <input type="text" value="${nama}" required placeholder="Nama penuh waris" class="waris-nama app-input px-2 py-1.5 text-xs">
                 </div>
                 <div class="flex gap-2 items-center">
                     <div class="flex-grow">
                         <label class="block text-slate-500 font-medium mb-1 text-[10px]">No. Telefon Waris</label>
-                        <input type="text" value="${noTel}" required placeholder="Contoh: 012-3456789" class="waris-tel w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-600">
+                        <input type="text" value="${noTel}" required placeholder="Contoh: 012-3456789" class="waris-tel app-input px-2 py-1.5 text-xs">
                     </div>
-                    <button type="button" onclick="removeWarisRow('${rowId}')" class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg mt-5 transition" title="Padam Waris">
+                    <button type="button" onclick="removeWarisRow('${rowId}')" class="p-2 bg-white border border-slate-200 hover:bg-rose-50 text-rose-600 rounded-lg mt-5 transition" title="Padam Waris">
                         <i data-lucide="minus-circle" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -722,14 +727,36 @@
             const baris = parseInt(document.getElementById('form-baris').value) || 0;
             const lot = parseInt(document.getElementById('form-lot').value) || 0;
             const warning = document.getElementById('slot-warning');
+            const warningText = document.getElementById('slot-warning-text');
             const btnSubmit = document.getElementById('btn-submit-form');
+            const lotInput = document.getElementById('form-lot');
+            const rowInput = document.getElementById('form-baris');
+            const lotLabel = document.getElementById('form-lot-label');
+            const rowLabel = document.getElementById('form-baris-label');
+            const baseLot = getBaseLotCount(blok, baris || 1);
+            const displayLot = getDisplayLotCount(blok, baris || 1);
+
+            rowInput.max = MAX_ROW;
+            lotInput.removeAttribute('max');
+            rowLabel.innerHTML = `Baris (1-${MAX_ROW}) <span class="text-red-500">*</span>`;
+            lotLabel.innerHTML = `Lot Seterusnya <span class="text-red-500">*</span>`;
+            lotInput.placeholder = `Auto: ${blok}${baris || 1}-${displayLot + 1} (asas ${baseLot} lot)`;
 
             if (!blok || !baris || !lot) return;
+
+            if (!isValidSlot(blok, baris, lot)) {
+                warningText.innerText = `Ralat: ${blok}${baris}-${lot} di luar susun atur blok ini.`;
+                warning.classList.remove('hidden');
+                btnSubmit.disabled = true;
+                btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
 
             // Check if slot is taken by another record
             const occupied = state.records.find(r => r.id !== id && r.blok === blok && r.baris === baris && r.lot === lot);
             
             if (occupied) {
+                warningText.innerText = 'Ralat: Slot ini telah dihuni oleh si mati lain!';
                 warning.classList.remove('hidden');
                 btnSubmit.disabled = true;
                 btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
@@ -766,9 +793,9 @@
                 document.getElementById('grave-form').reset();
                 document.getElementById('form-id').value = '';
                 
-                document.getElementById('form-blok').value = 'A';
-                document.getElementById('form-baris').value = '1';
-                document.getElementById('form-lot').value = '3';
+                document.getElementById('form-blok').value = state.selectedMapBlock;
+                document.getElementById('form-baris').value = state.selectedMapRow;
+                document.getElementById('form-lot').value = getNextLotNumber(state.selectedMapBlock, state.selectedMapRow);
 
                 addWarisRow();
             }
@@ -807,6 +834,12 @@
 
             if (warisList.length === 0) {
                 showToast("Sila isi sekurang-kurangnya satu maklumat waris.");
+                return;
+            }
+
+            if (!isValidSlot(blok, baris, lot)) {
+                showToast(`Slot ${blok}${baris}-${lot} tidak wujud dalam susun atur blok ini.`);
+                validateSlotAvailability();
                 return;
             }
 

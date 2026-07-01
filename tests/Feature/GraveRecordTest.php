@@ -87,4 +87,149 @@ class GraveRecordTest extends TestCase
             'no_tel' => '019-8765432',
         ]);
     }
+
+    public function test_admin_can_add_lot_beyond_default_row_capacity()
+    {
+        $payload = [
+            'nama_si_mati' => 'Arwah Lot Tambahan',
+            'no_ic' => '700101-01-8888',
+            'blok' => 'B',
+            'baris' => 6,
+            'lot' => 6,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Semakan', 'no_tel' => '012-3456789'],
+            ],
+        ];
+
+        $response = $this->postJson('/grave-records', $payload);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('blok', 'B')
+            ->assertJsonPath('baris', 6)
+            ->assertJsonPath('lot', 6);
+
+        $this->assertDatabaseHas('grave_records', [
+            'blok' => 'B',
+            'baris' => 6,
+            'lot' => 6,
+        ]);
+    }
+
+    public function test_duplicate_lot_in_same_row_is_rejected()
+    {
+        $payload = [
+            'nama_si_mati' => 'Arwah Pertama',
+            'no_ic' => '700101-01-6666',
+            'blok' => 'A',
+            'baris' => 1,
+            'lot' => 11,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Pertama', 'no_tel' => '012-3456789'],
+            ],
+        ];
+
+        $this->postJson('/grave-records', $payload)->assertStatus(201);
+
+        $duplicate = [
+            ...$payload,
+            'nama_si_mati' => 'Arwah Kedua',
+            'no_ic' => '700101-01-5555',
+        ];
+
+        $response = $this->postJson('/grave-records', $duplicate);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('lot');
+    }
+
+    public function test_rows_cannot_exceed_fifty_seven()
+    {
+        $payload = [
+            'nama_si_mati' => 'Arwah Luar Julat',
+            'no_ic' => '700101-01-7777',
+            'blok' => 'A',
+            'baris' => 58,
+            'lot' => 1,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Luar Julat', 'no_tel' => '012-3456789'],
+            ],
+        ];
+
+        $response = $this->postJson('/grave-records', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('baris');
+    }
+
+    public function test_can_search_grave_record_by_deceased_ic_or_waris_name()
+    {
+        $record = GraveRecord::create([
+            'nama_si_mati' => 'Arwah Carian',
+            'no_ic' => '700101-01-1234',
+            'blok' => 'A',
+            'baris' => 1,
+            'lot' => 1,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+        ]);
+
+        $record->waris()->create([
+            'nama' => 'Noraini binti Semakan',
+            'no_tel' => '012-3456789',
+        ]);
+
+        $this->getJson('/grave-records/search?q=Noraini')
+            ->assertStatus(200)
+            ->assertJsonPath('0.nama_si_mati', 'Arwah Carian')
+            ->assertJsonPath('0.no_ic', '700101-01-1234')
+            ->assertJsonPath('0.blok', 'A')
+            ->assertJsonPath('0.nombor_lot', 'A1-1')
+            ->assertJsonPath('0.lokasi_zon', 'Zon Kanan')
+            ->assertJsonPath('0.nama_waris.0', 'Noraini binti Semakan');
+
+        $this->getJson('/grave-records/search?q=700101')
+            ->assertStatus(200)
+            ->assertJsonPath('0.nama_si_mati', 'Arwah Carian');
+    }
+
+    public function test_block_capacity_updates_from_actual_slots_after_create_and_delete()
+    {
+        $this->getJson('/grave-records/capacities')
+            ->assertStatus(200)
+            ->assertJsonPath('A.total_capacity', 570);
+
+        $payload = [
+            'nama_si_mati' => 'Arwah Kapasiti Tambahan',
+            'no_ic' => '700101-01-4444',
+            'blok' => 'A',
+            'baris' => 1,
+            'lot' => 11,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Kapasiti', 'no_tel' => '012-3456789'],
+            ],
+        ];
+
+        $created = $this->postJson('/grave-records', $payload)
+            ->assertStatus(201)
+            ->json();
+
+        $this->getJson('/grave-records/capacities')
+            ->assertStatus(200)
+            ->assertJsonPath('A.total_capacity', 571);
+
+        $this->deleteJson("/grave-records/{$created['id']}")
+            ->assertStatus(200);
+
+        $this->getJson('/grave-records/capacities')
+            ->assertStatus(200)
+            ->assertJsonPath('A.total_capacity', 570);
+    }
 }
