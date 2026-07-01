@@ -1,47 +1,46 @@
 FROM php:8.4-apache
 
-# =========================
-# Set working directory
-# =========================
 WORKDIR /var/www/html
 
 # =========================
-# Install system dependencies
+# System dependencies
 # =========================
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
     curl \
+    zip \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    zip
+    libpq-dev
 
 # =========================
-# Install PHP extensions
+# PHP extensions (ALL TOGETHER)
 # =========================
-RUN docker-php-ext-install pdo pdo_mysql
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    pdo_pgsql \
+    pgsql
 
 # =========================
-# Enable Apache rewrite (Laravel requirement)
+# Apache config
 # =========================
 RUN a2enmod rewrite
 
-# =========================
-# Set Apache document root to /public
-# =========================
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
  && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # =========================
-# Copy project files
+# Copy project
 # =========================
 COPY . .
 
 # =========================
-# Permissions fix (IMPORTANT)
+# Permissions fix
 # =========================
 RUN mkdir -p storage/framework/views \
     && mkdir -p storage/framework/cache \
@@ -51,21 +50,15 @@ RUN mkdir -p storage/framework/views \
     && chmod -R 775 bootstrap/cache
 
 # =========================
-# Install Composer
+# Composer
 # =========================
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# =========================
-# Install dependencies
-# =========================
 RUN composer install --no-dev --optimize-autoloader
 
 # =========================
-# Expose port
+# Port
 # =========================
 EXPOSE 80
 
-# =========================
-# Start Apache
-# =========================
 CMD ["apache2-foreground"]
