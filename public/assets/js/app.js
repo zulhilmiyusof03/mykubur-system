@@ -55,15 +55,8 @@
             }
         ];
 
-        // Seeded accounts
-        const DEFAULT_USERS = [
-            { email: "admin@mykubur.com", password: "admin123", name: "Pengurus Kubur (Admin)", role: "admin" },
-            { email: "waris@mykubur.com", password: "waris123", name: "Mohd Waris", role: "waris" }
-        ];
-
         let state = {
             records: [],
-            users: [],
             currentUser: null,
             currentTab: 'waris',
             selectedMapBlock: 'A',
@@ -72,6 +65,7 @@
         };
 
         const RECORDS_API_URL = '/grave-records';
+        const AUTH_API_URL = '/auth';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
         function normalizeRecord(record) {
@@ -85,8 +79,15 @@
             };
         }
 
-        async function recordsApi(path = '', options = {}) {
-            const response = await fetch(`${RECORDS_API_URL}${path}`, {
+        function getErrorMessage(error) {
+            if (error.message) return error.message;
+
+            const firstError = error.errors ? Object.values(error.errors)[0]?.[0] : null;
+            return firstError || 'Ralat sambungan database.';
+        }
+
+        async function jsonApi(baseUrl, path = '', options = {}) {
+            const response = await fetch(`${baseUrl}${path}`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -98,10 +99,18 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.message || 'Ralat sambungan database.');
+                throw new Error(getErrorMessage(error));
             }
 
             return response.status === 204 ? null : response.json();
+        }
+
+        async function recordsApi(path = '', options = {}) {
+            return jsonApi(RECORDS_API_URL, path, options);
+        }
+
+        async function authApi(path = '', options = {}) {
+            return jsonApi(AUTH_API_URL, path, options);
         }
 
         function refreshAllViews() {
@@ -150,14 +159,7 @@
                 console.error(error);
             }
 
-            // Load Users
-            const savedUsers = localStorage.getItem('mykubur_users');
-            if (savedUsers) {
-                state.users = JSON.parse(savedUsers);
-            } else {
-                state.users = [...DEFAULT_USERS];
-                localStorage.setItem('mykubur_users', JSON.stringify(state.users));
-            }
+            localStorage.removeItem('mykubur_users');
         }
 
         // ==========================================
@@ -193,44 +195,45 @@
             }
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value.trim().toLowerCase();
             const pass = document.getElementById('login-password').value;
 
-            const foundUser = state.users.find(u => u.email === email && u.password === pass);
-
-            if (foundUser) {
-                sessionStorage.setItem('mykubur_session', JSON.stringify(foundUser));
-                state.currentUser = foundUser;
+            try {
+                const result = await authApi('/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password: pass })
+                });
+                sessionStorage.setItem('mykubur_session', JSON.stringify(result.user));
+                state.currentUser = result.user;
                 showSystemInterface();
-                showToast(`Selamat kembali, ${foundUser.name}!`);
-            } else {
-                showToast("Ralat: E-mel atau kata laluan salah! Sila cuba lagi.");
+                showToast(`Selamat kembali, ${result.user.name}!`);
+            } catch (error) {
+                showToast(`Ralat: ${error.message}`);
+                console.error(error);
             }
         }
 
-        function handleRegister(e) {
+        async function handleRegister(e) {
             e.preventDefault();
             const name = document.getElementById('reg-name').value.trim();
             const email = document.getElementById('reg-email').value.trim().toLowerCase();
             const pass = document.getElementById('reg-password').value;
 
-            // Check duplicate
-            if (state.users.some(u => u.email === email)) {
-                showToast("Ralat: Alamat e-mel ini telah pun didaftarkan!");
-                return;
+            try {
+                const result = await authApi('/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, email, password: pass })
+                });
+                sessionStorage.setItem('mykubur_session', JSON.stringify(result.user));
+                state.currentUser = result.user;
+                showSystemInterface();
+                showToast("Akaun waris anda telah berjaya didaftarkan dalam database!");
+            } catch (error) {
+                showToast(`Ralat: ${error.message}`);
+                console.error(error);
             }
-
-            const newUser = { email, password: pass, name, role: "waris" };
-            state.users.push(newUser);
-            localStorage.setItem('mykubur_users', JSON.stringify(state.users));
-
-            sessionStorage.setItem('mykubur_session', JSON.stringify(newUser));
-            state.currentUser = newUser;
-            
-            showSystemInterface();
-            showToast("Akaun waris anda telah berjaya didaftarkan!");
         }
 
         function handleLogout() {

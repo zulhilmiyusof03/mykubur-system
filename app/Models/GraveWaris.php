@@ -12,6 +12,7 @@ class GraveWaris extends Model
     protected $table = 'grave_waris';
 
     protected $fillable = [
+        'grave_record_id',
         'nama',
         'no_tel',
     ];

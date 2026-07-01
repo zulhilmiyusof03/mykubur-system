@@ -4,7 +4,8 @@ set -e
 PORT="${PORT:-8080}"
 
 php artisan storage:link || true
-php artisan config:cache
+php artisan optimize:clear
+php artisan config:clear
 php artisan view:cache
 
 for attempt in {1..10}; do
@@ -20,5 +21,8 @@ for attempt in {1..10}; do
     echo "Database is not ready yet. Retrying migration in 5 seconds..."
     sleep 5
 done
+
+# Seed database if there are no users
+php artisan tinker --execute="if (\App\Models\User::count() === 0) { \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]); }"
 
 exec php artisan serve --host=0.0.0.0 --port="${PORT}"
