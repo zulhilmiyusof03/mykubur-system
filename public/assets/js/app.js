@@ -74,10 +74,9 @@ let state = {
         }
 
         function getErrorMessage(error) {
-            if (error.message) return error.message;
-
             const firstError = error.errors ? Object.values(error.errors)[0]?.[0] : null;
-            return firstError || 'Ralat sambungan database.';
+
+            return firstError || error.message || 'Ralat sambungan database.';
         }
 
         async function jsonApi(baseUrl, path = '', options = {}) {
@@ -196,7 +195,7 @@ let state = {
                 showSystemInterface();
                 showToast(`Selamat kembali, ${result.user.name}!`);
             } catch (error) {
-                showToast(`Ralat: ${error.message}`);
+                showToast(error.message);
                 console.error(error);
             }
         }
@@ -215,9 +214,9 @@ let state = {
                 sessionStorage.setItem('mykubur_session', JSON.stringify(result.user));
                 state.currentUser = result.user;
                 showSystemInterface();
-                showToast("Akaun waris anda telah berjaya didaftarkan dalam database!");
+                showToast(`Akaun berjaya didaftarkan. Selamat datang, ${result.user.name}!`);
             } catch (error) {
-                showToast(`Ralat: ${error.message}`);
+                showToast(error.message);
                 console.error(error);
             }
         }

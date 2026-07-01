@@ -40,6 +40,34 @@ class GraveRecordTest extends TestCase
             ->assertJsonPath('user.name', 'Waris Baru');
     }
 
+    public function test_login_shows_clear_message_for_unregistered_account()
+    {
+        $this->postJson('/auth/login', [
+            'email' => 'belumdaftar@mykubur.com',
+            'password' => 'password123',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('email')
+            ->assertJsonPath('errors.email.0', 'Akaun ini tidak berdaftar. Sila daftar akaun waris terlebih dahulu.');
+    }
+
+    public function test_login_shows_clear_message_for_wrong_password()
+    {
+        User::factory()->create([
+            'email' => 'waris-test@mykubur.com',
+            'password' => 'password123',
+            'role' => 'waris',
+        ]);
+
+        $this->postJson('/auth/login', [
+            'email' => 'waris-test@mykubur.com',
+            'password' => 'salah123',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password')
+            ->assertJsonPath('errors.password.0', 'Kata laluan salah. Sila cuba semula.');
+    }
+
     public function test_can_create_grave_record_with_waris_relationship()
     {
         $payload = [
