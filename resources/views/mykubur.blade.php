@@ -564,6 +564,6 @@
     </footer>
 
     <!-- INTERACTIVE JAVASCRIPT STATE MANAGEMENT -->
-    <script src="{{ asset('assets/js/app.js') }}"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </body>
 </html>
