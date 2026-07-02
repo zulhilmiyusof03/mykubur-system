@@ -229,7 +229,7 @@
                         <div>
                             <label class="app-label">Kata Carian</label>
                             <div class="relative">
-                                <input type="text" id="waris-search-input" onkeyup="filterSearchWaris()" placeholder="Contoh: Noraini, 650203-08-5431 atau A12-4" class="app-input px-4 py-3 pl-10">
+                                <input type="text" id="waris-search-input" onkeyup="filterSearchWaris()" placeholder="CTH:Noraini, 650203085431, A12-4" class="app-input px-4 py-3 pl-10">
                                 <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
                             </div>
                         </div>
@@ -432,7 +432,7 @@
                     <!-- Admin Search & Filter Bar -->
                     <div class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3">
                         <div class="relative">
-                            <input type="text" id="admin-search-input" onkeyup="filterAdminTable()" placeholder="Contoh: Noraini, 650203-08-5431 atau A12-4" class="app-input px-3 py-2 pl-9 text-xs">
+                            <input type="text" id="admin-search-input" onkeyup="filterAdminTable()" placeholder="CTH: Noraini, 650203085431, A12-4" class="app-input px-3 py-2 pl-9 text-xs">
                             <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3"></i>
                         </div>
                         <div>
