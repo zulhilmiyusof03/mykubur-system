@@ -70,27 +70,116 @@ class GraveRecordController extends Controller
 
         $data = $request->validate([
             'blok' => ['required', Rule::in(['A', 'B', 'C'])],
-            'rows_to_add' => ['required', 'integer', 'min:1', 'max:50'],
+            'row_number' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'rows_to_add' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
-        $currentRows = $this->rowCount($data['blok']);
-        $newRows = $currentRows + (int) $data['rows_to_add'];
+        $rows = $this->activeRows($data['blok']);
+        $rowsToAdd = (int) ($data['rows_to_add'] ?? 0);
+        $rowNumber = (int) ($data['row_number'] ?? 0);
 
-        DB::table('grave_block_layouts')->upsert(
-            [[
-                'blok' => $data['blok'],
-                'row_count' => $newRows,
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]],
-            ['blok'],
-            ['row_count', 'updated_at']
-        );
+        if ($rowNumber < 1 && $rowsToAdd < 1) {
+            return response()->json([
+                'message' => 'Sila pilih nombor baris yang sah untuk ditambah.',
+                'errors' => ['row_number' => ['Sila pilih nombor baris yang sah untuk ditambah.']],
+            ], 422);
+        }
+
+        $newRows = [];
+
+        if ($rowNumber > 0) {
+            if (in_array($rowNumber, $rows, true)) {
+                return response()->json([
+                    'message' => "Baris {$rowNumber} Blok {$data['blok']} sudah wujud.",
+                    'errors' => ['row_number' => ["Baris {$rowNumber} Blok {$data['blok']} sudah wujud."]],
+                ], 422);
+            }
+
+            $newRows[] = $rowNumber;
+        } else {
+            $nextRow = max($rows ?: [self::DEFAULT_ROW_COUNT]) + 1;
+            for ($i = 0; $i < $rowsToAdd; $i++) {
+                $newRows[] = $nextRow + $i;
+            }
+        }
+
+        foreach ($newRows as $newRow) {
+            $this->upsertBlockRow($data['blok'], $newRow);
+        }
+
+        $this->syncBlockLayout($data['blok']);
+
+        $activeRows = $this->activeRows($data['blok']);
+
+        $message = count($newRows) === 1
+            ? "Baris {$newRows[0]} Blok {$data['blok']} berjaya ditambah."
+            : count($newRows).' baris berjaya ditambah pada Blok '.$data['blok'].'.';
 
         return response()->json([
-            'message' => "Baris Blok {$data['blok']} berjaya ditambah.",
+            'message' => $message,
             'block' => $data['blok'],
-            'row_count' => $newRows,
+            'row_number' => $newRows[0],
+            'row_count' => count($activeRows),
+            'max_row' => max($activeRows),
+            'rows' => $activeRows,
+            'capacities' => $this->blockCapacities(),
+        ]);
+    }
+
+    public function deleteRow(Request $request): JsonResponse
+    {
+        $this->ensureBlockLayoutTable();
+
+        $data = $request->validate([
+            'blok' => ['required', Rule::in(['A', 'B', 'C'])],
+            'row_number' => ['required', 'integer', 'min:1', 'max:999'],
+        ]);
+
+        $rows = $this->activeRows($data['blok']);
+        $rowNumber = (int) $data['row_number'];
+
+        if (! in_array($rowNumber, $rows, true)) {
+            return response()->json([
+                'message' => "Baris {$rowNumber} Blok {$data['blok']} tidak wujud.",
+                'errors' => ['row_number' => ["Baris {$rowNumber} Blok {$data['blok']} tidak wujud."]],
+            ], 422);
+        }
+
+        if (count($rows) <= 1) {
+            return response()->json([
+                'message' => "Blok {$data['blok']} mesti mempunyai sekurang-kurangnya satu baris.",
+                'errors' => ['row_number' => ["Blok {$data['blok']} mesti mempunyai sekurang-kurangnya satu baris."]],
+            ], 422);
+        }
+
+        $hasRecords = GraveRecord::query()
+            ->where('blok', $data['blok'])
+            ->where('baris', $rowNumber)
+            ->exists();
+
+        if ($hasRecords) {
+            return response()->json([
+                'message' => "Baris {$rowNumber} Blok {$data['blok']} masih mempunyai rekod kubur.",
+                'errors' => ['row_number' => ["Baris {$rowNumber} Blok {$data['blok']} masih mempunyai rekod kubur."]],
+            ], 422);
+        }
+
+        DB::table('grave_block_rows')
+            ->where('blok', $data['blok'])
+            ->where('row_number', $rowNumber)
+            ->delete();
+
+        $this->syncBlockLayout($data['blok']);
+
+        $activeRows = $this->activeRows($data['blok']);
+
+        return response()->json([
+            'message' => "Baris {$rowNumber} Blok {$data['blok']} berjaya dipadam.",
+            'block' => $data['blok'],
+            'row_number' => $rowNumber,
+            'row_count' => count($activeRows),
+            'max_row' => max($activeRows),
+            'rows' => $activeRows,
             'capacities' => $this->blockCapacities(),
         ]);
     }
@@ -170,7 +259,7 @@ class GraveRecordController extends Controller
             $blok = $request->input('blok');
             $baris = (int) $request->input('baris');
 
-            if (in_array($blok, ['A', 'B', 'C'], true) && $baris > $this->rowCount($blok)) {
+            if (in_array($blok, ['A', 'B', 'C'], true) && ! $this->rowExists($blok, $baris)) {
                 $validator->errors()->add('baris', 'Baris ini belum wujud untuk blok yang dipilih.');
                 return;
             }
@@ -192,7 +281,7 @@ class GraveRecordController extends Controller
         $baris = (int) $baris;
         $lot = (int) $lot;
 
-        if ($baris < 1 || $baris > $this->rowCount($blok)) {
+        if ($baris < 1 || ! $this->rowExists($blok, $baris)) {
             return false;
         }
 
@@ -205,7 +294,9 @@ class GraveRecordController extends Controller
             ->mapWithKeys(fn (string $blok) => [
                 $blok => [
                     'block' => $blok,
-                    'row_count' => $this->rowCount($blok),
+                    'row_count' => count($this->activeRows($blok)),
+                    'max_row' => $this->rowCount($blok),
+                    'rows' => $this->activeRows($blok),
                     'total_capacity' => $this->calculateBlockCapacity($blok),
                 ],
             ])
@@ -216,7 +307,7 @@ class GraveRecordController extends Controller
     {
         $capacity = 0;
 
-        for ($baris = 1; $baris <= $this->rowCount($blok); $baris++) {
+        foreach ($this->activeRows($blok) as $baris) {
             $baseLotCount = $this->baseLotCount($blok, $baris);
             $highestLot = (int) GraveRecord::query()
                 ->where('blok', $blok)
@@ -236,10 +327,10 @@ class GraveRecordController extends Controller
 
     private function rowCount(string $blok): int
     {
-        $configuredRows = 0;
+        $configuredMaxRow = 0;
 
         if (Schema::hasTable('grave_block_layouts')) {
-            $configuredRows = (int) DB::table('grave_block_layouts')
+            $configuredMaxRow = (int) DB::table('grave_block_layouts')
                 ->where('blok', $blok)
                 ->value('row_count');
         }
@@ -248,7 +339,10 @@ class GraveRecordController extends Controller
             ->where('blok', $blok)
             ->max('baris');
 
-        return max(self::DEFAULT_ROW_COUNT, $configuredRows, $highestUsedRow);
+        $activeRows = Schema::hasTable('grave_block_rows') ? $this->activeRows($blok) : [];
+        $highestActiveRow = $activeRows === [] ? 0 : max($activeRows);
+
+        return max(self::DEFAULT_ROW_COUNT, $configuredMaxRow, $highestUsedRow, $highestActiveRow);
     }
 
     private function ensureBlockLayoutTable(): void
@@ -262,18 +356,106 @@ class GraveRecordController extends Controller
             });
         }
 
-        foreach (['A', 'B', 'C'] as $blok) {
-            DB::table('grave_block_layouts')->upsert(
-                [[
-                    'blok' => $blok,
-                    'row_count' => max(self::DEFAULT_ROW_COUNT, $this->rowCount($blok)),
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]],
-                ['blok'],
-                ['row_count', 'updated_at']
-            );
+        if (! Schema::hasTable('grave_block_rows')) {
+            Schema::create('grave_block_rows', function (Blueprint $table) {
+                $table->id();
+                $table->char('blok', 1);
+                $table->unsignedSmallInteger('row_number');
+                $table->timestamps();
+
+                $table->unique(['blok', 'row_number']);
+            });
         }
+
+        foreach (['A', 'B', 'C'] as $blok) {
+            if (DB::table('grave_block_rows')->where('blok', $blok)->doesntExist()) {
+                $rowCount = max(self::DEFAULT_ROW_COUNT, $this->configuredLayoutRows($blok), $this->highestUsedRow($blok));
+
+                for ($rowNumber = 1; $rowNumber <= $rowCount; $rowNumber++) {
+                    $this->upsertBlockRow($blok, $rowNumber);
+                }
+            }
+
+            GraveRecord::query()
+                ->where('blok', $blok)
+                ->select('baris')
+                ->distinct()
+                ->pluck('baris')
+                ->each(fn ($rowNumber) => $this->upsertBlockRow($blok, (int) $rowNumber));
+
+            $this->syncBlockLayout($blok);
+        }
+    }
+
+    private function activeRows(string $blok): array
+    {
+        if (! Schema::hasTable('grave_block_rows')) {
+            return range(1, max(self::DEFAULT_ROW_COUNT, $this->configuredLayoutRows($blok), $this->highestUsedRow($blok)));
+        }
+
+        $rows = DB::table('grave_block_rows')
+            ->where('blok', $blok)
+            ->orderBy('row_number')
+            ->pluck('row_number')
+            ->map(fn ($rowNumber) => (int) $rowNumber)
+            ->all();
+
+        return $rows === []
+            ? range(1, max(self::DEFAULT_ROW_COUNT, $this->configuredLayoutRows($blok), $this->highestUsedRow($blok)))
+            : $rows;
+    }
+
+    private function rowExists(string $blok, int $baris): bool
+    {
+        return in_array($baris, $this->activeRows($blok), true);
+    }
+
+    private function configuredLayoutRows(string $blok): int
+    {
+        if (! Schema::hasTable('grave_block_layouts')) {
+            return 0;
+        }
+
+        return (int) DB::table('grave_block_layouts')
+            ->where('blok', $blok)
+            ->value('row_count');
+    }
+
+    private function highestUsedRow(string $blok): int
+    {
+        return (int) GraveRecord::query()
+            ->where('blok', $blok)
+            ->max('baris');
+    }
+
+    private function upsertBlockRow(string $blok, int $rowNumber): void
+    {
+        DB::table('grave_block_rows')->upsert(
+            [[
+                'blok' => $blok,
+                'row_number' => $rowNumber,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]],
+            ['blok', 'row_number'],
+            ['updated_at']
+        );
+    }
+
+    private function syncBlockLayout(string $blok): void
+    {
+        $rows = $this->activeRows($blok);
+
+        DB::table('grave_block_layouts')->upsert(
+            [[
+                'blok' => $blok,
+                'row_count' => count($rows),
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]],
+            ['blok'],
+            ['row_count', 'updated_at']
+        );
     }
 
     private function zoneName(string $blok): string

@@ -5,6 +5,11 @@ let state = {
             selectedMapBlock: 'A',
             selectedMapRow: 1,
             blockRows: { A: 57, B: 57, C: 57 },
+            activeRows: {
+                A: Array.from({ length: 57 }, (_, index) => index + 1),
+                B: Array.from({ length: 57 }, (_, index) => index + 1),
+                C: Array.from({ length: 57 }, (_, index) => index + 1)
+            },
             authMode: 'login' // login or register
         };
 
@@ -14,12 +19,42 @@ let state = {
         const DEFAULT_ROW_COUNT = 57;
 
         function getMaxRow(blok = state.selectedMapBlock) {
+            const activeRows = getAvailableRows(blok);
+            const highestActiveRow = activeRows.length ? Math.max(...activeRows) : 0;
             const configuredRows = Number(state.blockRows?.[blok]) || DEFAULT_ROW_COUNT;
             const highestUsedRow = state.records
                 .filter(r => r.blok === blok)
                 .reduce((highest, record) => Math.max(highest, Number(record.baris)), 0);
 
-            return Math.max(DEFAULT_ROW_COUNT, configuredRows, highestUsedRow);
+            return Math.max(DEFAULT_ROW_COUNT, configuredRows, highestUsedRow, highestActiveRow);
+        }
+
+        function getAvailableRows(blok = state.selectedMapBlock) {
+            const rows = Array.isArray(state.activeRows?.[blok]) ? state.activeRows[blok] : [];
+
+            if (rows.length > 0) {
+                return [...new Set(rows.map(Number).filter(row => row >= 1))].sort((a, b) => a - b);
+            }
+
+            const configuredRows = Number(state.blockRows?.[blok]) || DEFAULT_ROW_COUNT;
+            const highestUsedRow = state.records
+                .filter(r => r.blok === blok)
+                .reduce((highest, record) => Math.max(highest, Number(record.baris)), 0);
+
+            return Array.from({ length: Math.max(DEFAULT_ROW_COUNT, configuredRows, highestUsedRow) }, (_, index) => index + 1);
+        }
+
+        function getNextMissingRow(blok) {
+            const rows = getAvailableRows(blok);
+            const rowSet = new Set(rows);
+
+            for (let row = 1; row <= Math.max(DEFAULT_ROW_COUNT, getMaxRow(blok)); row++) {
+                if (!rowSet.has(row)) {
+                    return row;
+                }
+            }
+
+            return Math.max(...rows, DEFAULT_ROW_COUNT) + 1;
         }
 
         function getBaseLotCount(blok, baris) {
@@ -42,9 +77,9 @@ let state = {
 
         function getBlockCapacity(blok) {
             let total = 0;
-            for (let baris = 1; baris <= getMaxRow(blok); baris++) {
+            getAvailableRows(blok).forEach(baris => {
                 total += getDisplayLotCount(blok, baris);
-            }
+            });
 
             return total;
         }
@@ -68,7 +103,7 @@ let state = {
             const lotNumber = Number(lot);
             return ['A', 'B', 'C'].includes(blok)
                 && rowNumber >= 1
-                && rowNumber <= getMaxRow(blok)
+                && getAvailableRows(blok).includes(rowNumber)
                 && lotNumber >= 1;
         }
 
@@ -119,6 +154,7 @@ let state = {
         function refreshAllViews() {
             localStorage.setItem('mykubur_records', JSON.stringify(state.records));
             populateBarisDropdown();
+            syncAdminRowControls();
             renderStats();
             updatePhysicalMapBlocksUI();
             renderVisualMap();
@@ -131,6 +167,7 @@ let state = {
             await initData();
             checkSession();
             populateBarisDropdown();
+            syncAdminRowControls();
             renderStats();
             renderVisualMap();
             filterSearchWaris(); // Initial state show help
@@ -168,13 +205,19 @@ let state = {
 
         function applyBlockCapacities(capacities) {
             Object.entries(capacities).forEach(([blok, detail]) => {
-                state.blockRows[blok] = Math.max(DEFAULT_ROW_COUNT, Number(detail.row_count) || DEFAULT_ROW_COUNT);
+                const rows = Array.isArray(detail.rows) && detail.rows.length
+                    ? detail.rows.map(Number).filter(row => row >= 1).sort((a, b) => a - b)
+                    : Array.from({ length: Math.max(DEFAULT_ROW_COUNT, Number(detail.row_count) || DEFAULT_ROW_COUNT) }, (_, index) => index + 1);
+
+                state.activeRows[blok] = rows;
+                state.blockRows[blok] = Number(detail.max_row) || Math.max(DEFAULT_ROW_COUNT, ...rows);
             });
         }
 
         function deriveBlockRowsFromRecords() {
             ['A', 'B', 'C'].forEach(blok => {
                 state.blockRows[blok] = getMaxRow(blok);
+                state.activeRows[blok] = Array.from({ length: state.blockRows[blok] }, (_, index) => index + 1);
             });
         }
 
@@ -362,30 +405,56 @@ let state = {
             const summary = document.getElementById('admin-row-summary');
             if (!summary) return;
 
-            summary.innerText = `A: ${getMaxRow('A')}, B: ${getMaxRow('B')}, C: ${getMaxRow('C')} baris`;
+            summary.innerText = `A: ${getAvailableRows('A').length}, B: ${getAvailableRows('B').length}, C: ${getAvailableRows('C').length} baris aktif`;
         }
 
         function populateBarisDropdown() {
             const select = document.getElementById('map-row-select');
             const label = document.getElementById('map-row-label');
-            const maxRow = getMaxRow(state.selectedMapBlock);
+            const rows = getAvailableRows(state.selectedMapBlock);
 
             select.innerHTML = '';
-            for (let i = 1; i <= maxRow; i++) {
+            rows.forEach(rowNumber => {
                 const opt = document.createElement('option');
-                opt.value = i;
-                opt.innerText = `Baris ${i}`;
+                opt.value = rowNumber;
+                opt.innerText = `Baris ${rowNumber}`;
                 select.appendChild(opt);
-            }
+            });
 
-            if (state.selectedMapRow > maxRow) {
-                state.selectedMapRow = maxRow;
+            if (!rows.includes(Number(state.selectedMapRow))) {
+                state.selectedMapRow = rows[0] || 1;
             }
 
             select.value = state.selectedMapRow;
             if (label) {
-                label.innerText = `Pilih Baris (1 - ${maxRow}):`;
+                label.innerText = `Pilih Baris (${rows.length} aktif):`;
             }
+        }
+
+        function syncAdminRowControls() {
+            const addBlockInput = document.getElementById('add-row-block');
+            const addRowInput = document.getElementById('add-row-number');
+            const deleteBlockInput = document.getElementById('delete-row-block');
+            const deleteRowInput = document.getElementById('delete-row-number');
+
+            if (addBlockInput && addRowInput) {
+                addRowInput.value = getNextMissingRow(addBlockInput.value);
+            }
+
+            if (!deleteBlockInput || !deleteRowInput) return;
+
+            const rows = getAvailableRows(deleteBlockInput.value);
+            const currentValue = Number(deleteRowInput.value);
+            deleteRowInput.innerHTML = '';
+
+            rows.forEach(rowNumber => {
+                const opt = document.createElement('option');
+                opt.value = rowNumber;
+                opt.innerText = `Baris ${rowNumber}`;
+                deleteRowInput.appendChild(opt);
+            });
+
+            deleteRowInput.value = rows.includes(currentValue) ? currentValue : (rows[0] || '');
         }
 
         // TAB SWITCHER WITH STRICT PERMISSIONS
@@ -525,10 +594,10 @@ let state = {
 
         function changeMapBlock(blok) {
             state.selectedMapBlock = blok;
-            const maxRow = getMaxRow(blok);
-            if (state.selectedMapRow > maxRow) {
-                state.selectedMapRow = maxRow;
-                document.getElementById('map-row-select').value = maxRow;
+            const rows = getAvailableRows(blok);
+            if (!rows.includes(Number(state.selectedMapRow))) {
+                state.selectedMapRow = rows[0] || 1;
+                document.getElementById('map-row-select').value = state.selectedMapRow;
             }
             populateBarisDropdown();
             updatePhysicalMapBlocksUI();
@@ -593,10 +662,10 @@ let state = {
 
         function renderVisualMap() {
             let baris = parseInt(document.getElementById('map-row-select').value) || 1;
-            const maxRow = getMaxRow(state.selectedMapBlock);
-            if (baris > maxRow) {
-                baris = maxRow;
-                document.getElementById('map-row-select').value = maxRow;
+            const rows = getAvailableRows(state.selectedMapBlock);
+            if (!rows.includes(baris)) {
+                baris = rows[0] || 1;
+                document.getElementById('map-row-select').value = baris;
             }
             state.selectedMapRow = baris;
             
@@ -605,6 +674,15 @@ let state = {
 
             const blok = state.selectedMapBlock;
             document.getElementById('lots-header-title').innerText = `PAPARAN BARISAN LOTS: BLOK ${blok} (BARIS ${baris})`;
+
+            if (!rows.length) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-xs font-semibold text-slate-500">
+                        Tiada baris aktif untuk Blok ${blok}.
+                    </div>
+                `;
+                return;
+            }
 
             const lotCount = getDisplayLotCount(blok, baris);
 
@@ -735,27 +813,63 @@ let state = {
 
         async function addCemeteryRows() {
             const blockInput = document.getElementById('add-row-block');
-            const countInput = document.getElementById('add-row-count');
+            const rowInput = document.getElementById('add-row-number');
             const blok = blockInput.value;
-            const rowsToAdd = parseInt(countInput.value) || 0;
+            const rowNumber = parseInt(rowInput.value) || 0;
 
-            if (!['A', 'B', 'C'].includes(blok) || rowsToAdd < 1) {
-                showToast('Sila pilih blok dan jumlah baris yang sah.');
+            if (!['A', 'B', 'C'].includes(blok) || rowNumber < 1) {
+                showToast('Sila pilih blok dan nombor baris yang sah.');
+                return;
+            }
+
+            if (getAvailableRows(blok).includes(rowNumber)) {
+                showToast(`Baris ${rowNumber} Blok ${blok} sudah wujud.`);
                 return;
             }
 
             try {
                 const result = await recordsApi('/rows', {
                     method: 'POST',
-                    body: JSON.stringify({ blok, rows_to_add: rowsToAdd })
+                    body: JSON.stringify({ blok, row_number: rowNumber })
                 });
 
                 applyBlockCapacities(result.capacities);
                 state.selectedMapBlock = blok;
-                state.selectedMapRow = result.row_count;
-                countInput.value = 1;
+                state.selectedMapRow = result.row_number;
                 refreshAllViews();
-                showToast(`${rowsToAdd} baris berjaya ditambah pada Blok ${blok}.`);
+                showToast(result.message || `Baris ${rowNumber} berjaya ditambah pada Blok ${blok}.`);
+            } catch (error) {
+                showToast(`Ralat database: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        async function deleteCemeteryRow() {
+            const blockInput = document.getElementById('delete-row-block');
+            const rowInput = document.getElementById('delete-row-number');
+            const blok = blockInput.value;
+            const rowNumber = parseInt(rowInput.value) || 0;
+
+            if (!['A', 'B', 'C'].includes(blok) || rowNumber < 1) {
+                showToast('Sila pilih baris yang sah untuk dipadam.');
+                return;
+            }
+
+            if (!confirm(`Adakah anda pasti mahu memadam Baris ${rowNumber} Blok ${blok}?`)) {
+                return;
+            }
+
+            try {
+                const result = await recordsApi('/rows', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ blok, row_number: rowNumber })
+                });
+
+                applyBlockCapacities(result.capacities);
+                state.selectedMapBlock = blok;
+                state.selectedMapRow = getAvailableRows(blok)[0] || 1;
+                refreshAllViews();
+                showToast(result.message || `Baris ${rowNumber} Blok ${blok} berjaya dipadam.`);
             } catch (error) {
                 showToast(`Ralat database: ${error.message}`);
                 console.error(error);
@@ -767,7 +881,7 @@ let state = {
             const blok = document.getElementById('form-blok').value;
             const baris = parseInt(document.getElementById('form-baris').value) || 0;
 
-            if (!id && blok && baris >= 1 && baris <= getMaxRow(blok)) {
+            if (!id && blok && getAvailableRows(blok).includes(baris)) {
                 document.getElementById('form-lot').value = getNextLotNumber(blok, baris);
             }
 
@@ -834,11 +948,12 @@ let state = {
             const baseLot = getBaseLotCount(blok, baris || 1);
             const displayLot = getDisplayLotCount(blok, baris || 1);
 
-            const maxRow = getMaxRow(blok);
+            const rows = getAvailableRows(blok);
+            const maxRow = rows.length ? Math.max(...rows) : DEFAULT_ROW_COUNT;
 
             rowInput.max = maxRow;
             lotInput.removeAttribute('max');
-            rowLabel.innerHTML = `Baris (1-${maxRow}) <span class="text-red-500">*</span>`;
+            rowLabel.innerHTML = `Baris Aktif (${rows.length}) <span class="text-red-500">*</span>`;
             lotLabel.innerHTML = `Lot Seterusnya <span class="text-red-500">*</span>`;
             lotInput.placeholder = `Auto: ${blok}${baris || 1}-${displayLot + 1} (asas ${baseLot} lot)`;
 

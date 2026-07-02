@@ -233,6 +233,88 @@ class GraveRecordTest extends TestCase
             ->assertJsonPath('A.total_capacity', 590);
     }
 
+    public function test_admin_can_add_specific_row_and_use_it()
+    {
+        $this->postJson('/grave-records/rows', [
+            'blok' => 'A',
+            'row_number' => 80,
+        ])
+            ->assertStatus(200)
+            ->assertJsonPath('block', 'A')
+            ->assertJsonPath('row_number', 80)
+            ->assertJsonPath('row_count', 58);
+
+        $payload = [
+            'nama_si_mati' => 'Arwah Baris Spesifik',
+            'no_ic' => '700101-01-3030',
+            'blok' => 'A',
+            'baris' => 80,
+            'lot' => 1,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Baris Spesifik', 'no_tel' => '012-3456789'],
+            ],
+        ];
+
+        $this->postJson('/grave-records', $payload)
+            ->assertStatus(201)
+            ->assertJsonPath('blok', 'A')
+            ->assertJsonPath('baris', 80);
+    }
+
+    public function test_admin_can_delete_empty_row_but_not_row_with_records()
+    {
+        $this->postJson('/grave-records/rows', [
+            'blok' => 'C',
+            'row_number' => 70,
+        ])->assertStatus(200);
+
+        $this->deleteJson('/grave-records/rows', [
+            'blok' => 'C',
+            'row_number' => 70,
+        ])
+            ->assertStatus(200)
+            ->assertJsonPath('block', 'C')
+            ->assertJsonPath('row_number', 70)
+            ->assertJsonPath('row_count', 57);
+
+        $this->postJson('/grave-records', [
+            'nama_si_mati' => 'Arwah Baris Dipadam',
+            'no_ic' => '700101-01-3131',
+            'blok' => 'C',
+            'baris' => 70,
+            'lot' => 1,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Baris Dipadam', 'no_tel' => '012-3456789'],
+            ],
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('baris');
+
+        $this->postJson('/grave-records', [
+            'nama_si_mati' => 'Arwah Baris Aktif',
+            'no_ic' => '700101-01-3232',
+            'blok' => 'C',
+            'baris' => 57,
+            'lot' => 1,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Baris Aktif', 'no_tel' => '012-3456789'],
+            ],
+        ])->assertStatus(201);
+
+        $this->deleteJson('/grave-records/rows', [
+            'blok' => 'C',
+            'row_number' => 57,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('row_number');
+    }
+
     public function test_capacity_endpoints_recover_when_block_layout_table_is_missing()
     {
         Schema::dropIfExists('grave_block_layouts');

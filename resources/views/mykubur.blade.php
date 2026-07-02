@@ -451,22 +451,40 @@
                         </div>
                     </div>
 
-                    <div class="p-4 bg-white border-b border-slate-200 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                        <div class="md:col-span-2">
+                    <div class="p-4 bg-white border-b border-slate-200 grid grid-cols-1 lg:grid-cols-7 gap-3 items-end">
+                        <div class="lg:col-span-2">
                             <label class="app-label">Tambah Baris Kubur</label>
-                            <select id="add-row-block" class="app-input text-xs px-3 py-2">
+                            <select id="add-row-block" onchange="syncAdminRowControls()" class="app-input text-xs px-3 py-2">
                                 <option value="A">Blok A</option>
                                 <option value="B">Blok B</option>
                                 <option value="C">Blok C</option>
                             </select>
                         </div>
                         <div>
-                            <label class="app-label">Jumlah Baris</label>
-                            <input type="number" id="add-row-count" min="1" max="50" value="1" class="app-input px-3 py-2 text-xs">
+                            <label class="app-label">No. Baris</label>
+                            <input type="number" id="add-row-number" min="1" max="999" value="58" class="app-input px-3 py-2 text-xs">
                         </div>
-                        <div class="md:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div>
                             <button onclick="addCemeteryRows()" class="app-button-secondary px-4 py-2.5 text-xs flex items-center justify-center gap-2">
                                 <i data-lucide="rows-3" class="w-4 h-4"></i> Tambah Baris
+                            </button>
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="app-label">Padam Baris Kubur</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="delete-row-block" onchange="syncAdminRowControls()" class="app-input text-xs px-3 py-2">
+                                    <option value="A">Blok A</option>
+                                    <option value="B">Blok B</option>
+                                    <option value="C">Blok C</option>
+                                </select>
+                                <select id="delete-row-number" class="app-input text-xs px-3 py-2">
+                                    <!-- JS auto populate baris aktif -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <button onclick="deleteCemeteryRow()" class="app-button-secondary px-4 py-2.5 text-xs flex items-center justify-center gap-2 text-rose-700 hover:text-rose-800">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Padam Baris
                             </button>
                             <span id="admin-row-summary" class="text-xs font-semibold text-slate-500">A: 57, B: 57, C: 57 baris</span>
                         </div>
