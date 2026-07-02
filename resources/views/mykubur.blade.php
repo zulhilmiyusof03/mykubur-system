@@ -451,43 +451,42 @@
                         </div>
                     </div>
 
-                    <div class="p-4 bg-white border-b border-slate-200 grid grid-cols-1 lg:grid-cols-7 gap-3 items-end">
-                        <div class="lg:col-span-2">
-                            <label class="app-label">Tambah Baris Kubur</label>
-                            <select id="add-row-block" onchange="syncAdminRowControls()" class="app-input text-xs px-3 py-2">
-                                <option value="A">Blok A</option>
-                                <option value="B">Blok B</option>
-                                <option value="C">Blok C</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="app-label">No. Baris</label>
-                            <input type="number" id="add-row-number" min="1" max="999" value="58" class="app-input px-3 py-2 text-xs">
-                        </div>
-                        <div>
-                            <button onclick="addCemeteryRows()" class="app-button-secondary px-4 py-2.5 text-xs flex items-center justify-center gap-2">
-                                <i data-lucide="rows-3" class="w-4 h-4"></i> Tambah Baris
-                            </button>
-                        </div>
-                        <div class="lg:col-span-2">
-                            <label class="app-label">Padam Baris Kubur</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <select id="delete-row-block" onchange="syncAdminRowControls()" class="app-input text-xs px-3 py-2">
-                                    <option value="A">Blok A</option>
-                                    <option value="B">Blok B</option>
-                                    <option value="C">Blok C</option>
-                                </select>
-                                <select id="delete-row-number" class="app-input text-xs px-3 py-2">
-                                    <!-- JS auto populate baris aktif -->
-                                </select>
+                    <div class="p-4 bg-white border-b border-slate-200 space-y-3">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="app-panel p-4">
+                                <label class="app-label">Tambah Baris Kubur</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-[1fr_120px_150px] gap-3 items-end">
+                                    <select id="add-row-block" onchange="syncAdminRowControls()" class="app-input h-10 text-xs px-3 py-2">
+                                        <option value="A">Blok A</option>
+                                        <option value="B">Blok B</option>
+                                        <option value="C">Blok C</option>
+                                    </select>
+                                    <input type="number" id="add-row-number" min="1" max="999" value="58" class="app-input h-10 px-3 py-2 text-xs" aria-label="Nombor baris untuk ditambah">
+                                    <button onclick="addCemeteryRows()" class="app-button-secondary h-10 px-4 text-xs flex items-center justify-center gap-2 whitespace-nowrap">
+                                        <i data-lucide="rows-3" class="w-4 h-4"></i> Tambah Baris
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="app-panel p-4">
+                                <label class="app-label">Padam Baris Kubur</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-[1fr_120px_150px] gap-3 items-end">
+                                    <select id="delete-row-block" onchange="syncAdminRowControls()" class="app-input h-10 text-xs px-3 py-2">
+                                        <option value="A">Blok A</option>
+                                        <option value="B">Blok B</option>
+                                        <option value="C">Blok C</option>
+                                    </select>
+                                    <select id="delete-row-number" class="app-input h-10 text-xs px-3 py-2" aria-label="Nombor baris untuk dipadam">
+                                        <!-- JS auto populate baris aktif -->
+                                    </select>
+                                    <button onclick="deleteCemeteryRow()" class="app-button-secondary h-10 px-4 text-xs flex items-center justify-center gap-2 text-rose-700 hover:text-rose-800 whitespace-nowrap">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i> Padam Baris
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                            <button onclick="deleteCemeteryRow()" class="app-button-secondary px-4 py-2.5 text-xs flex items-center justify-center gap-2 text-rose-700 hover:text-rose-800">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i> Padam Baris
-                            </button>
-                            <span id="admin-row-summary" class="text-xs font-semibold text-slate-500">A: 57, B: 57, C: 57 baris</span>
-                        </div>
+
+                        <span id="admin-row-summary" class="block text-xs font-semibold text-slate-500">A: 57, B: 57, C: 57 baris</span>
                     </div>
 
                     <!-- TABLE REKOD -->
