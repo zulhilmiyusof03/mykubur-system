@@ -619,7 +619,12 @@ let state = {
             tbody.innerHTML = '';
 
             const filtered = state.records.filter(r => {
-                const matchSearch = r.nama_si_mati.toLowerCase().includes(searchVal) || getLotCode(r).toLowerCase().includes(searchVal);
+                const lotCode = getLotCode(r).toLowerCase();
+                const warisNames = r.waris.map(w => w.nama.toLowerCase()).join(' ');
+                const matchSearch = r.nama_si_mati.toLowerCase().includes(searchVal)
+                    || r.no_ic.toLowerCase().includes(searchVal)
+                    || lotCode.includes(searchVal)
+                    || warisNames.includes(searchVal);
                 const matchBlock = filterBlock === "" || r.blok === filterBlock;
                 return matchSearch && matchBlock;
             });

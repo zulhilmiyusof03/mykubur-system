@@ -65,7 +65,7 @@ class GraveRecordTest extends TestCase
         ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('password')
-            ->assertJsonPath('errors.password.0', 'Kata laluan salah. Sila cuba semula.');
+            ->assertJsonPath('errors.password.0', 'Kata laluan salah. Sila cuba semula');
     }
 
     public function test_can_create_grave_record_with_waris_relationship()

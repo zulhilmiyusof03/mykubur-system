@@ -35,6 +35,8 @@
 
             <!-- LOGIN FORM -->
             <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                <div id="login-error" class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-xs font-bold leading-relaxed text-rose-700 shadow-sm" role="alert"></div>
+
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Alamat Emel</label>
                     <div class="relative">
@@ -50,8 +52,6 @@
                         <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
                     </div>
                 </div>
-
-                <div id="login-error" class="hidden rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" role="alert"></div>
 
                 <button type="submit" class="app-button-primary w-full py-3 text-xs flex items-center justify-center gap-2">
                     <i data-lucide="log-in" class="w-4 h-4"></i> Masuk Ke Sistem
@@ -419,7 +419,7 @@
                     <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <h2 class="app-title">Senarai Rekod Si Mati</h2>
-                            <p class="app-muted">Urus pendaftaran, kemaskini dan padam rekod kubur.</p>
+                            <p class="app-muted">Cari menggunakan nama, no. IC, nama waris atau nombor lot.</p>
                         </div>
                         <button onclick="openFormModal()" class="app-button-primary text-xs px-4 py-3 flex items-center gap-2 w-full sm:w-auto justify-center">
                             <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Rekod Baharu
@@ -429,7 +429,7 @@
                     <!-- Admin Search & Filter Bar -->
                     <div class="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="relative">
-                            <input type="text" id="admin-search-input" onkeyup="filterAdminTable()" placeholder="Cari nama atau no. lot" class="app-input px-3 py-2 pl-9 text-xs">
+                            <input type="text" id="admin-search-input" onkeyup="filterAdminTable()" placeholder="Contoh: Noraini, 650203-08-5431 atau A12-4" class="app-input px-3 py-2 pl-9 text-xs">
                             <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3"></i>
                         </div>
                         <div>

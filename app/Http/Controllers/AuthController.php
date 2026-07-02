@@ -31,7 +31,7 @@ class AuthController extends Controller
 
         if (! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'password' => ['Kata laluan salah. Sila cuba semula.'],
+                'password' => ['Kata laluan salah. Sila cuba semula'],
             ]);
         }
 
