@@ -76,13 +76,15 @@ class GraveRecordController extends Controller
         $currentRows = $this->rowCount($data['blok']);
         $newRows = $currentRows + (int) $data['rows_to_add'];
 
-        DB::table('grave_block_layouts')->updateOrInsert(
-            ['blok' => $data['blok']],
-            [
+        DB::table('grave_block_layouts')->upsert(
+            [[
+                'blok' => $data['blok'],
                 'row_count' => $newRows,
                 'updated_at' => now(),
                 'created_at' => now(),
-            ]
+            ]],
+            ['blok'],
+            ['row_count', 'updated_at']
         );
 
         return response()->json([
@@ -261,13 +263,15 @@ class GraveRecordController extends Controller
         }
 
         foreach (['A', 'B', 'C'] as $blok) {
-            DB::table('grave_block_layouts')->updateOrInsert(
-                ['blok' => $blok],
-                [
+            DB::table('grave_block_layouts')->upsert(
+                [[
+                    'blok' => $blok,
                     'row_count' => max(self::DEFAULT_ROW_COUNT, $this->rowCount($blok)),
                     'updated_at' => now(),
                     'created_at' => now(),
-                ]
+                ]],
+                ['blok'],
+                ['row_count', 'updated_at']
             );
         }
     }
