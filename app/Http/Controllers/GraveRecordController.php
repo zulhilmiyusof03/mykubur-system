@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\GraveRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class GraveRecordController extends Controller
 {
+    private const DEFAULT_ROW_COUNT = 57;
+
     public function index(): JsonResponse
     {
         return response()->json(
@@ -55,7 +59,38 @@ class GraveRecordController extends Controller
 
     public function capacities(): JsonResponse
     {
+        $this->ensureBlockLayoutTable();
+
         return response()->json($this->blockCapacities());
+    }
+
+    public function addRows(Request $request): JsonResponse
+    {
+        $this->ensureBlockLayoutTable();
+
+        $data = $request->validate([
+            'blok' => ['required', Rule::in(['A', 'B', 'C'])],
+            'rows_to_add' => ['required', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $currentRows = $this->rowCount($data['blok']);
+        $newRows = $currentRows + (int) $data['rows_to_add'];
+
+        DB::table('grave_block_layouts')->updateOrInsert(
+            ['blok' => $data['blok']],
+            [
+                'row_count' => $newRows,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        return response()->json([
+            'message' => "Baris Blok {$data['blok']} berjaya ditambah.",
+            'block' => $data['blok'],
+            'row_count' => $newRows,
+            'capacities' => $this->blockCapacities(),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -111,7 +146,7 @@ class GraveRecordController extends Controller
                 Rule::unique('grave_records', 'no_ic')->ignore($ignoreId),
             ],
             'blok' => ['required', Rule::in(['A', 'B', 'C'])],
-            'baris' => ['required', 'integer', 'between:1,57'],
+            'baris' => ['required', 'integer', 'min:1'],
             'lot' => [
                 'required',
                 'integer',
@@ -130,6 +165,14 @@ class GraveRecordController extends Controller
         ]);
 
         $validator->after(function ($validator) use ($request) {
+            $blok = $request->input('blok');
+            $baris = (int) $request->input('baris');
+
+            if (in_array($blok, ['A', 'B', 'C'], true) && $baris > $this->rowCount($blok)) {
+                $validator->errors()->add('baris', 'Baris ini belum wujud untuk blok yang dipilih.');
+                return;
+            }
+
             if (! $this->isValidSlot($request->input('blok'), $request->input('baris'), $request->input('lot'))) {
                 $validator->errors()->add('lot', 'Baris atau blok tidak sah untuk susun atur kubur ini.');
             }
@@ -147,7 +190,7 @@ class GraveRecordController extends Controller
         $baris = (int) $baris;
         $lot = (int) $lot;
 
-        if ($baris < 1 || $baris > 57) {
+        if ($baris < 1 || $baris > $this->rowCount($blok)) {
             return false;
         }
 
@@ -160,6 +203,7 @@ class GraveRecordController extends Controller
             ->mapWithKeys(fn (string $blok) => [
                 $blok => [
                     'block' => $blok,
+                    'row_count' => $this->rowCount($blok),
                     'total_capacity' => $this->calculateBlockCapacity($blok),
                 ],
             ])
@@ -170,7 +214,7 @@ class GraveRecordController extends Controller
     {
         $capacity = 0;
 
-        for ($baris = 1; $baris <= 57; $baris++) {
+        for ($baris = 1; $baris <= $this->rowCount($blok); $baris++) {
             $baseLotCount = $this->baseLotCount($blok, $baris);
             $highestLot = (int) GraveRecord::query()
                 ->where('blok', $blok)
@@ -186,6 +230,46 @@ class GraveRecordController extends Controller
     private function baseLotCount(string $blok, int $baris): int
     {
         return $blok === 'B' && $baris <= 7 ? 5 : 10;
+    }
+
+    private function rowCount(string $blok): int
+    {
+        $configuredRows = 0;
+
+        if (Schema::hasTable('grave_block_layouts')) {
+            $configuredRows = (int) DB::table('grave_block_layouts')
+                ->where('blok', $blok)
+                ->value('row_count');
+        }
+
+        $highestUsedRow = (int) GraveRecord::query()
+            ->where('blok', $blok)
+            ->max('baris');
+
+        return max(self::DEFAULT_ROW_COUNT, $configuredRows, $highestUsedRow);
+    }
+
+    private function ensureBlockLayoutTable(): void
+    {
+        if (! Schema::hasTable('grave_block_layouts')) {
+            Schema::create('grave_block_layouts', function (Blueprint $table) {
+                $table->id();
+                $table->char('blok', 1)->unique();
+                $table->unsignedSmallInteger('row_count')->default(self::DEFAULT_ROW_COUNT);
+                $table->timestamps();
+            });
+        }
+
+        foreach (['A', 'B', 'C'] as $blok) {
+            DB::table('grave_block_layouts')->updateOrInsert(
+                ['blok' => $blok],
+                [
+                    'row_count' => max(self::DEFAULT_ROW_COUNT, $this->rowCount($blok)),
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
     }
 
     private function zoneName(string $blok): string

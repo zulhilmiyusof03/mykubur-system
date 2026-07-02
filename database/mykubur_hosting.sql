@@ -111,6 +111,21 @@ CREATE TABLE IF NOT EXISTS `grave_records` (
   UNIQUE KEY `grave_records_blok_baris_lot_unique` (`blok`,`baris`,`lot`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `grave_block_layouts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `blok` char(1) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `row_count` smallint unsigned NOT NULL DEFAULT '57',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `grave_block_layouts_blok_unique` (`blok`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `grave_block_layouts` (`blok`, `row_count`, `created_at`, `updated_at`) VALUES
+('A', 57, NOW(), NOW()),
+('B', 57, NOW(), NOW()),
+('C', 57, NOW(), NOW());
+
 CREATE TABLE IF NOT EXISTS `grave_waris` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `grave_record_id` bigint unsigned NOT NULL,
@@ -128,4 +143,5 @@ INSERT IGNORE INTO `migrations` (`migration`, `batch`) VALUES
 ('0001_01_01_000001_create_cache_table', 1),
 ('0001_01_01_000002_create_jobs_table', 1),
 ('2026_05_25_000001_create_grave_records_table', 1),
-('2026_05_25_000002_create_grave_waris_table', 1);
+('2026_05_25_000002_create_grave_waris_table', 1),
+('2026_07_02_000001_create_grave_block_layouts_table', 1);

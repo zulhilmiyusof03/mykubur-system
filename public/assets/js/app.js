@@ -4,13 +4,23 @@ let state = {
             currentTab: 'waris',
             selectedMapBlock: 'A',
             selectedMapRow: 1,
+            blockRows: { A: 57, B: 57, C: 57 },
             authMode: 'login' // login or register
         };
 
         const RECORDS_API_URL = '/grave-records';
         const AUTH_API_URL = '/auth';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-        const MAX_ROW = 57;
+        const DEFAULT_ROW_COUNT = 57;
+
+        function getMaxRow(blok = state.selectedMapBlock) {
+            const configuredRows = Number(state.blockRows?.[blok]) || DEFAULT_ROW_COUNT;
+            const highestUsedRow = state.records
+                .filter(r => r.blok === blok)
+                .reduce((highest, record) => Math.max(highest, Number(record.baris)), 0);
+
+            return Math.max(DEFAULT_ROW_COUNT, configuredRows, highestUsedRow);
+        }
 
         function getBaseLotCount(blok, baris) {
             if (blok === 'B' && Number(baris) <= 7) {
@@ -32,7 +42,7 @@ let state = {
 
         function getBlockCapacity(blok) {
             let total = 0;
-            for (let baris = 1; baris <= MAX_ROW; baris++) {
+            for (let baris = 1; baris <= getMaxRow(blok); baris++) {
                 total += getDisplayLotCount(blok, baris);
             }
 
@@ -58,7 +68,7 @@ let state = {
             const lotNumber = Number(lot);
             return ['A', 'B', 'C'].includes(blok)
                 && rowNumber >= 1
-                && rowNumber <= MAX_ROW
+                && rowNumber <= getMaxRow(blok)
                 && lotNumber >= 1;
         }
 
@@ -108,6 +118,7 @@ let state = {
 
         function refreshAllViews() {
             localStorage.setItem('mykubur_records', JSON.stringify(state.records));
+            populateBarisDropdown();
             renderStats();
             updatePhysicalMapBlocksUI();
             renderVisualMap();
@@ -133,6 +144,7 @@ let state = {
             try {
                 const records = await recordsApi();
                 state.records = records.map(normalizeRecord);
+                await loadBlockCapacities();
 
                 localStorage.setItem('mykubur_records', JSON.stringify(state.records));
             } catch (error) {
@@ -144,9 +156,26 @@ let state = {
                     localStorage.removeItem('mykubur_records');
                 }
                 console.error(error);
+                deriveBlockRowsFromRecords();
             }
 
             localStorage.removeItem('mykubur_users');
+        }
+
+        async function loadBlockCapacities() {
+            applyBlockCapacities(await recordsApi('/capacities'));
+        }
+
+        function applyBlockCapacities(capacities) {
+            Object.entries(capacities).forEach(([blok, detail]) => {
+                state.blockRows[blok] = Math.max(DEFAULT_ROW_COUNT, Number(detail.row_count) || DEFAULT_ROW_COUNT);
+            });
+        }
+
+        function deriveBlockRowsFromRecords() {
+            ['A', 'B', 'C'].forEach(blok => {
+                state.blockRows[blok] = getMaxRow(blok);
+            });
         }
 
         // ==========================================
@@ -325,18 +354,38 @@ let state = {
             if (statsA) statsA.innerText = textA;
             if (statsB) statsB.innerText = textB;
             if (statsC) statsC.innerText = textC;
+
+            updateAdminRowSummary();
+        }
+
+        function updateAdminRowSummary() {
+            const summary = document.getElementById('admin-row-summary');
+            if (!summary) return;
+
+            summary.innerText = `A: ${getMaxRow('A')}, B: ${getMaxRow('B')}, C: ${getMaxRow('C')} baris`;
         }
 
         function populateBarisDropdown() {
             const select = document.getElementById('map-row-select');
+            const label = document.getElementById('map-row-label');
+            const maxRow = getMaxRow(state.selectedMapBlock);
+
             select.innerHTML = '';
-            for (let i = 1; i <= MAX_ROW; i++) {
+            for (let i = 1; i <= maxRow; i++) {
                 const opt = document.createElement('option');
                 opt.value = i;
                 opt.innerText = `Baris ${i}`;
                 select.appendChild(opt);
             }
+
+            if (state.selectedMapRow > maxRow) {
+                state.selectedMapRow = maxRow;
+            }
+
             select.value = state.selectedMapRow;
+            if (label) {
+                label.innerText = `Pilih Baris (1 - ${maxRow}):`;
+            }
         }
 
         // TAB SWITCHER WITH STRICT PERMISSIONS
@@ -476,10 +525,12 @@ let state = {
 
         function changeMapBlock(blok) {
             state.selectedMapBlock = blok;
-            if (state.selectedMapRow > MAX_ROW) {
-                state.selectedMapRow = MAX_ROW;
-                document.getElementById('map-row-select').value = MAX_ROW;
+            const maxRow = getMaxRow(blok);
+            if (state.selectedMapRow > maxRow) {
+                state.selectedMapRow = maxRow;
+                document.getElementById('map-row-select').value = maxRow;
             }
+            populateBarisDropdown();
             updatePhysicalMapBlocksUI();
             renderVisualMap();
             showToast(`Menukar paparan ke Blok ${blok}`);
@@ -542,9 +593,10 @@ let state = {
 
         function renderVisualMap() {
             let baris = parseInt(document.getElementById('map-row-select').value) || 1;
-            if (baris > MAX_ROW) {
-                baris = MAX_ROW;
-                document.getElementById('map-row-select').value = MAX_ROW;
+            const maxRow = getMaxRow(state.selectedMapBlock);
+            if (baris > maxRow) {
+                baris = maxRow;
+                document.getElementById('map-row-select').value = maxRow;
             }
             state.selectedMapRow = baris;
             
@@ -681,12 +733,41 @@ let state = {
             renderAdminTable();
         }
 
+        async function addCemeteryRows() {
+            const blockInput = document.getElementById('add-row-block');
+            const countInput = document.getElementById('add-row-count');
+            const blok = blockInput.value;
+            const rowsToAdd = parseInt(countInput.value) || 0;
+
+            if (!['A', 'B', 'C'].includes(blok) || rowsToAdd < 1) {
+                showToast('Sila pilih blok dan jumlah baris yang sah.');
+                return;
+            }
+
+            try {
+                const result = await recordsApi('/rows', {
+                    method: 'POST',
+                    body: JSON.stringify({ blok, rows_to_add: rowsToAdd })
+                });
+
+                applyBlockCapacities(result.capacities);
+                state.selectedMapBlock = blok;
+                state.selectedMapRow = result.row_count;
+                countInput.value = 1;
+                refreshAllViews();
+                showToast(`${rowsToAdd} baris berjaya ditambah pada Blok ${blok}.`);
+            } catch (error) {
+                showToast(`Ralat database: ${error.message}`);
+                console.error(error);
+            }
+        }
+
         function updateNextLotForNewRecord() {
             const id = document.getElementById('form-id').value;
             const blok = document.getElementById('form-blok').value;
             const baris = parseInt(document.getElementById('form-baris').value) || 0;
 
-            if (!id && blok && baris >= 1 && baris <= MAX_ROW) {
+            if (!id && blok && baris >= 1 && baris <= getMaxRow(blok)) {
                 document.getElementById('form-lot').value = getNextLotNumber(blok, baris);
             }
 
@@ -753,9 +834,11 @@ let state = {
             const baseLot = getBaseLotCount(blok, baris || 1);
             const displayLot = getDisplayLotCount(blok, baris || 1);
 
-            rowInput.max = MAX_ROW;
+            const maxRow = getMaxRow(blok);
+
+            rowInput.max = maxRow;
             lotInput.removeAttribute('max');
-            rowLabel.innerHTML = `Baris (1-${MAX_ROW}) <span class="text-red-500">*</span>`;
+            rowLabel.innerHTML = `Baris (1-${maxRow}) <span class="text-red-500">*</span>`;
             lotLabel.innerHTML = `Lot Seterusnya <span class="text-red-500">*</span>`;
             lotInput.placeholder = `Auto: ${blok}${baris || 1}-${displayLot + 1} (asas ${baseLot} lot)`;
 

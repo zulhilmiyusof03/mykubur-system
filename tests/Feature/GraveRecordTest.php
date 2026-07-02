@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\GraveRecord;
 use App\Models\GraveWaris;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class GraveRecordTest extends TestCase
@@ -193,6 +194,67 @@ class GraveRecordTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors('baris');
+    }
+
+    public function test_admin_can_add_rows_and_capacity_updates()
+    {
+        $this->postJson('/grave-records/rows', [
+            'blok' => 'A',
+            'rows_to_add' => 2,
+        ])
+            ->assertStatus(200)
+            ->assertJsonPath('block', 'A')
+            ->assertJsonPath('row_count', 59)
+            ->assertJsonPath('capacities.A.row_count', 59)
+            ->assertJsonPath('capacities.A.total_capacity', 590);
+
+        $payload = [
+            'nama_si_mati' => 'Arwah Baris Tambahan',
+            'no_ic' => '700101-01-3333',
+            'blok' => 'A',
+            'baris' => 59,
+            'lot' => 10,
+            'tarikh_kebumi' => '2026-06-15',
+            'masa_kebumi' => '14:30',
+            'waris' => [
+                ['nama' => 'Waris Baris Tambahan', 'no_tel' => '012-3456789'],
+            ],
+        ];
+
+        $this->postJson('/grave-records', $payload)
+            ->assertStatus(201)
+            ->assertJsonPath('blok', 'A')
+            ->assertJsonPath('baris', 59)
+            ->assertJsonPath('lot', 10);
+
+        $this->getJson('/grave-records/capacities')
+            ->assertStatus(200)
+            ->assertJsonPath('A.row_count', 59)
+            ->assertJsonPath('A.total_capacity', 590);
+    }
+
+    public function test_capacity_endpoints_recover_when_block_layout_table_is_missing()
+    {
+        Schema::dropIfExists('grave_block_layouts');
+
+        $this->getJson('/grave-records/capacities')
+            ->assertStatus(200)
+            ->assertJsonPath('A.row_count', 57)
+            ->assertJsonPath('A.total_capacity', 570);
+
+        $this->postJson('/grave-records/rows', [
+            'blok' => 'C',
+            'rows_to_add' => 1,
+        ])
+            ->assertStatus(200)
+            ->assertJsonPath('block', 'C')
+            ->assertJsonPath('row_count', 58)
+            ->assertJsonPath('capacities.C.total_capacity', 580);
+
+        $this->assertDatabaseHas('grave_block_layouts', [
+            'blok' => 'C',
+            'row_count' => 58,
+        ]);
     }
 
     public function test_can_search_grave_record_by_deceased_ic_or_waris_name()
