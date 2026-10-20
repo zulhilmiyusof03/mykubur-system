@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MyKubur - Perkuburan Islam Kampung Rantau Panjang</title>
+    <link rel="icon" type="image/png" href="/assets/images/logo.png">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/assets/css/app.css?v={{ filemtime(public_path('assets/css/app.css')) }}">
@@ -332,7 +333,7 @@
                             <div class="map-road rounded-b-2xl py-5 text-center border-t border-slate-600 relative overflow-hidden">
                                 <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-zinc-700"></div>
                                 <span class="text-xs font-bold uppercase tracking-wider text-slate-200 relative z-10 flex items-center justify-center gap-2">
-                                    <i data-lucide="navigation" class="w-4 h-4 text-emerald-400 rotate-45"></i> Jalan Utama (Rantau Panjang)
+                                    <i data-lucide="navigation" class="w-4 h-4 text-emerald-400 rotate-45"></i> Jalan Utama (Shapadu Lama)
                                 </span>
                             </div>
 
